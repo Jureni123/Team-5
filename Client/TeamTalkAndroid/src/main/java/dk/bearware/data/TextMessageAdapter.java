@@ -30,7 +30,7 @@ import java.util.List;
 import dk.bearware.ServerProperties;
 import dk.bearware.TextMsgType;
 import dk.bearware.gui.AccessibilityAssistant;
-import dk.bearware.gui.R;
+import dk.bearware.gui.ofa.R;
 
 import android.content.ActivityNotFoundException;
 import android.content.Context;
