@@ -111,7 +111,7 @@ import dk.bearware.events.TeamTalkEventHandler;
 import dk.bearware.gui.CmdComplete;
 import dk.bearware.gui.MainActivity;
 import dk.bearware.gui.MediaButtonEventReceiver;
-import dk.bearware.gui.R;
+import dk.bearware.gui.ofa.R;
 import dk.bearware.gui.Utils;
 
 import static dk.bearware.gui.CmdComplete.CMD_COMPLETE_NONE;
