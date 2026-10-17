@@ -43,7 +43,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button; // <--- TAMBAHAN IMPORT BUTTON
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
@@ -56,11 +56,10 @@ import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-// <--- TAMBAHAN IMPORT FIREBASE ---
+// Import Firebase yang diperlukan
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -134,14 +133,14 @@ public class ServerListActivity extends AppCompatActivity
         setupRecyclerView();
         setupSearch();
         
-        // <--- PANGGIL FUNGSI AUTO CONNECT DI SINI ---
+        // Panggil fungsi auto connect di sini
         setupAutoConnectButton(); 
         
         setTitle(R.string.title_activity_server_list);
         executorService = Executors.newFixedThreadPool(2);
     }
 
-    // <--- FUNGSI BARU UNTUK AUTO CONNECT KE SERVER SEWAAN ---
+    // Fungsi baru untuk auto connect ke server sewaan via Firebase
     private void setupAutoConnectButton() {
         Button btnAutoConnect = findViewById(R.id.btn_auto_connect_firebase);
         if (btnAutoConnect == null) return;
@@ -253,14 +252,11 @@ public class ServerListActivity extends AppCompatActivity
         }
 
         if (mConnection.isBound()) {
-            // reset state since we're creating a new connection
             getService().resetState();
             getClient().closeSoundInputDevice();
             getClient().closeSoundOutputDevice();
             getService().getEventHandler().registerOnCmdMyselfLoggedIn(this, true);
 
-            // Connect to server if 'serverentry' is specified.
-            // Connection to server is either started here or in onServiceConnected()
             if (this.serverentry != null) {
                 getService().setServerEntry(this.serverentry);
 
@@ -300,7 +296,6 @@ public class ServerListActivity extends AppCompatActivity
         Permissions.RECORD_AUDIO.request(this);
         Permissions.MODIFY_AUDIO_SETTINGS.request(this);
 
-        // Bind to LocalService if not already
         if (!mConnection.isBound()) {
             Intent intent = new Intent(getApplicationContext(), TeamTalkService.class);
             if (!bindService(intent, mConnection, Context.BIND_AUTO_CREATE))
@@ -315,7 +310,6 @@ public class ServerListActivity extends AppCompatActivity
         super.onStop();
 
         if (isFinishing() && mConnection.isBound()) {
-            // Unbind from the service.
             getService().resetState();
             onServiceDisconnected(getService());
             stopService(new Intent(getApplicationContext(), TeamTalkService.class));
@@ -332,7 +326,6 @@ public class ServerListActivity extends AppCompatActivity
             executorService.shutdown();
         }
 
-        // Unbind from the service
         if (mConnection.isBound()) {
             Log.d(TAG, "Unbinding TeamTalk service");
             onServiceDisconnected(getService());
@@ -413,7 +406,6 @@ public class ServerListActivity extends AppCompatActivity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.server_list, menu);
         return true;
     }
@@ -787,9 +779,6 @@ public class ServerListActivity extends AppCompatActivity
             loadLocalServers();        
         }
 
-        // Get public servers from http. TeamTalk DLL must be loaded by
-        // service, otherwise static methods are unavailable (for getting DLL
-        // version number).
         loadServerListAsync();
     }
 
@@ -857,8 +846,6 @@ public class ServerListActivity extends AppCompatActivity
 
         service.getEventHandler().registerOnCmdMyselfLoggedIn(this, true);
 
-        // Connect to server if 'serverentry' is specified.
-        // Connection to server is either started here or in onResume()
         if (serverentry != null) {
             service.setServerEntry(serverentry);
 
@@ -913,7 +900,7 @@ public class ServerListActivity extends AppCompatActivity
                     case LOCAL :
                         return 1;
                     case OFFICIAL :
-                        return 0; // order determined by xml-reply (from web-request)
+                        return 0;
                     case PUBLIC :
                     case UNOFFICIAL :
                         return -1;
@@ -926,7 +913,7 @@ public class ServerListActivity extends AppCompatActivity
                     case OFFICIAL :
                         return 1;
                     case PUBLIC :
-                        return 0; // order determined by xml-reply (from web-request)
+                        return 0;
                     case UNOFFICIAL :
                         return -1;
                 }
