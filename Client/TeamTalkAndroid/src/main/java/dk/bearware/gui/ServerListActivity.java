@@ -10,7 +10,7 @@
  * Email: contact@bearware.dk
  * Phone: +45 20 20 54 59
  * Web: http://www.bearware.dk
- * Modifed by Jureni123
+ *modifed by Jureni123
  * This source code is part of the TeamTalk SDK owned by
  * BearWare.dk. Use of this file, or its compiled unit, requires a
  * TeamTalk SDK License Key issued by BearWare.dk.
@@ -18,7 +18,6 @@
  * The TeamTalk SDK License Agreement along with its Terms and
  * Conditions are outlined in the file License.txt included with
  * the TeamTalk SDK distribution.
- *
  */
 
 package dk.bearware.gui;
@@ -141,6 +140,33 @@ public class ServerListActivity extends AppCompatActivity
     }
 
     // ============================================================
+    // AMBIL DATA PROFIL DARI AKUN GOOGLE
+    // ============================================================
+    private String getGoogleDisplayName() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null && user.getDisplayName() != null && !user.getDisplayName().isEmpty()) {
+            return user.getDisplayName();
+        }
+        return "Pengguna";
+    }
+
+    private String getGoogleEmail() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null && user.getEmail() != null) {
+            return user.getEmail();
+        }
+        return "";
+    }
+
+    private String getGooglePhotoUrl() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null && user.getPhotoUrl() != null) {
+            return user.getPhotoUrl().toString();
+        }
+        return null;
+    }
+
+    // ============================================================
     // FUNGSI AUTO CONNECT MODE PUBLIK (SIAPA PUN BISA MASUK)
     // Mengambil data dari dokumen 'public_guest' di Firestore
     // ============================================================
@@ -158,7 +184,6 @@ public class ServerListActivity extends AppCompatActivity
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             
             // MENGAMBIL DATA DARI DOKUMEN PUBLIK 'public_guest'
-            // Bukan lagi berdasarkan UID user yang login
             db.collection("users").document("public_guest").get() 
                 .addOnSuccessListener(document -> {
                     if (document.exists()) {
@@ -166,20 +191,29 @@ public class ServerListActivity extends AppCompatActivity
                         String ttPass = document.getString("teamtalk_password");
                         
                         if (ttUser != null && ttPass != null) {
-                            // DATA SERVER SEWAANMU
+                            // DATA SERVER
                             String serverIP = "159.89.177.33"; 
                             int tcpPort = 10173; 
                             int udpPort = 10173; 
                             
-                            // Buat ServerEntry menggunakan Default User Publik
+                            // Buat ServerEntry
                             ServerEntry firebaseEntry = new ServerEntry();
                             firebaseEntry.servername = "Server Komunitas (Auto)";
                             firebaseEntry.ipaddr = serverIP;
                             firebaseEntry.tcpport = tcpPort;
                             firebaseEntry.udpport = udpPort;
-                            firebaseEntry.username = ttUser; // Akan terisi "ofa59" dari Firestore
-                            firebaseEntry.password = ttPass; // Akan terisi password dari Firestore
+                            
+                            // ✅ GUNAKAN NAMA DARI GOOGLE SEBAGAI NAMA DI SERVER
+                            String googleName = getGoogleDisplayName();
+                            firebaseEntry.nickname = googleName;
+                            firebaseEntry.username = ttUser;
+                            firebaseEntry.password = ttPass;
                             firebaseEntry.servertype = ServerEntry.ServerType.LOCAL;
+                            
+                            // Tampilkan info
+                            String email = getGoogleEmail();
+                            Toast.makeText(this, "Selamat datang, " + googleName + 
+                                (email.isEmpty() ? "" : " (" + email + ")"), Toast.LENGTH_SHORT).show();
                             
                             // Lakukan koneksi otomatis
                             this.serverentry = firebaseEntry;
@@ -188,7 +222,7 @@ public class ServerListActivity extends AppCompatActivity
                             if (!getService().reconnect()) {
                                 showToast(getString(R.string.err_connection));
                             } else {
-                                showToast("Menghubungkan sebagai " + ttUser + "...");
+                                showToast("Menghubungkan sebagai " + googleName + "...");
                             }
                         } else {
                             Toast.makeText(this, "Data default user belum lengkap", Toast.LENGTH_LONG).show();
