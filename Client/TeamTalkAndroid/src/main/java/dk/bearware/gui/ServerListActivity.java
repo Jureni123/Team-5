@@ -10,7 +10,7 @@
  * Email: contact@bearware.dk
  * Phone: +45 20 20 54 59
  * Web: http://www.bearware.dk
- *
+ * Modifed by Jureni123
  * This source code is part of the TeamTalk SDK owned by
  * BearWare.dk. Use of this file, or its compiled unit, requires a
  * TeamTalk SDK License Key issued by BearWare.dk.
@@ -56,7 +56,7 @@ import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-// Import Firebase yang diperlukan
+// Import Firebase
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -133,13 +133,17 @@ public class ServerListActivity extends AppCompatActivity
         setupRecyclerView();
         setupSearch();
         
-        // Panggil fungsi auto connect di sini
+        // Panggil fungsi auto connect publik di sini
         setupAutoConnectButton(); 
         
         setTitle(R.string.title_activity_server_list);
         executorService = Executors.newFixedThreadPool(2);
     }
-// Fungsi baru untuk auto connect ke server sewaan via Firebase
+
+    // ============================================================
+    // FUNGSI AUTO CONNECT MODE PUBLIK (SIAPA PUN BISA MASUK)
+    // Mengambil data dari dokumen 'public_guest' di Firestore
+    // ============================================================
     private void setupAutoConnectButton() {
         Button btnAutoConnect = findViewById(R.id.btn_auto_connect_firebase);
         if (btnAutoConnect == null) return;
@@ -151,15 +155,11 @@ public class ServerListActivity extends AppCompatActivity
                 return;
             }
 
-            // Ambil UID user yang sedang login
-            String currentUid = user.getUid();
-            
-            // Tampilkan UID di Toast agar bisa dicocokkan dengan Firestore
-            Toast.makeText(this, "UID: " + currentUid.substring(0, Math.min(15, currentUid.length())) + "...", Toast.LENGTH_LONG).show();
-            Log.d("FIREBASE_DEBUG", "Mencari dokumen dengan UID: " + currentUid);
-
             FirebaseFirestore db = FirebaseFirestore.getInstance();
-            db.collection("users").document(currentUid).get()
+            
+            // MENGAMBIL DATA DARI DOKUMEN PUBLIK 'public_guest'
+            // Bukan lagi berdasarkan UID user yang login
+            db.collection("users").document("public_guest").get() 
                 .addOnSuccessListener(document -> {
                     if (document.exists()) {
                         String ttUser = document.getString("teamtalk_username");
@@ -171,38 +171,35 @@ public class ServerListActivity extends AppCompatActivity
                             int tcpPort = 10173; 
                             int udpPort = 10173; 
                             
-                            // Buat ServerEntry dari data Firebase
+                            // Buat ServerEntry menggunakan Default User Publik
                             ServerEntry firebaseEntry = new ServerEntry();
                             firebaseEntry.servername = "Server Komunitas (Auto)";
                             firebaseEntry.ipaddr = serverIP;
                             firebaseEntry.tcpport = tcpPort;
                             firebaseEntry.udpport = udpPort;
-                            firebaseEntry.username = ttUser;
-                            firebaseEntry.password = ttPass;
+                            firebaseEntry.username = ttUser; // Akan terisi "ofa59" dari Firestore
+                            firebaseEntry.password = ttPass; // Akan terisi password dari Firestore
                             firebaseEntry.servertype = ServerEntry.ServerType.LOCAL;
                             
-                            // Lakukan koneksi menggunakan mekanisme bawaan
+                            // Lakukan koneksi otomatis
                             this.serverentry = firebaseEntry;
                             getService().setServerEntry(this.serverentry);
                             
                             if (!getService().reconnect()) {
                                 showToast(getString(R.string.err_connection));
                             } else {
-                                showToast("Menghubungkan ke server...");
+                                showToast("Menghubungkan sebagai " + ttUser + "...");
                             }
                         } else {
-                            Toast.makeText(this, "Data akun TT belum lengkap", Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, "Data default user belum lengkap", Toast.LENGTH_LONG).show();
                         }
                     } else {
-                        // Pesan error lebih informatif
-                        Toast.makeText(this, "User tidak ditemukan! UID: " + currentUid.substring(0, 10) + "...", Toast.LENGTH_LONG).show();
-                        Log.e("FIREBASE_DEBUG", "Dokumen dengan UID " + currentUid + " tidak ada di Firestore");
+                        Toast.makeText(this, "Dokumen public_guest tidak ditemukan", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Gagal ambil data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("FIREBASE_DEBUG", "Error mengambil data Firestore", e);
-                });
+                .addOnFailureListener(e -> 
+                    Toast.makeText(this, "Gagal ambil data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
         });
     }
 
