@@ -1,44 +1,26 @@
 {
   "project_info": {
-    "project_number": "2342613364",
-    "project_id": "team5-123",
-    "storage_bucket": "team5-123.firebasestorage.app"
+    "project_number": "428603880623",
+    "project_id": "teamtalk-ofa",
+    "storage_bucket": "teamtalk-ofa.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:2342613364:android:0c8a0d9f34da6b08dcfc21",
+        "mobilesdk_app_id": "1:428603880623:android:05c1cc4105c1fc1883105a",
         "android_client_info": {
-          "package_name": "dk.bearware.gui"
+          "package_name": "dk.bearware.gui.ofa"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "2342613364-pn0n1mnbnqb4q21174dbjq7gg3q2i9uc.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "dk.bearware.gui",
-            "certificate_hash": "11d8dc33eb58e8cdcf0da45bd4c72c0a902100a5"
-          }
-        },
-        {
-          "client_id": "2342613364-b7ildvubgsmvf5bcp5nj10vtc66ubggr.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyASQ9Lix6CrEnnTmKFF2wGL5RUaMkboqds"
+          "current_key": "AIzaSyDgIU59kPd8XaKkt0z8gTwYcsP7HQhFQqI"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "2342613364-b7ildvubgsmvf5bcp5nj10vtc66ubggr.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
