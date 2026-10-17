@@ -47,7 +47,7 @@ import dk.bearware.UserState;
 import dk.bearware.VideoFrame;
 import dk.bearware.backend.TeamTalkService;
 import dk.bearware.events.ClientEventListener;
-import dk.bearware.gui.R;
+import dk.bearware.gui.ofa.R;
 import dk.bearware.gui.Utils;
 
 public class MediaAdapter
