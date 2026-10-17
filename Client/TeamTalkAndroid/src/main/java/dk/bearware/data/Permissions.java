@@ -39,7 +39,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import dk.bearware.gui.R;
+import dk.bearware.gui.ofa.R;
 
 @SuppressLint("InlinedApi")
 public enum Permissions {
