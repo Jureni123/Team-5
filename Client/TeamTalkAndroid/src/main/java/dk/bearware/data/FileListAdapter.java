@@ -61,7 +61,7 @@ import dk.bearware.UserRight;
 import dk.bearware.backend.TeamTalkService;
 import dk.bearware.events.ClientEventListener;
 import dk.bearware.gui.AccessibilityAssistant;
-import dk.bearware.gui.R;
+import dk.bearware.gui.ofa.R;
 import dk.bearware.gui.Utils;
 
 public class FileListAdapter
