@@ -1,0 +1,192 @@
+name: TeamTalk5 Android Build (arm64-v8a + Permanent SHA-1 + Commit Tracking)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-arm64-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ✅ AMBIL COMMIT SHA UNTUK TRACKING VERSI
+      - name: Get commit info
+        id: commit_info
+        run: |
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          FULL_SHA=$(git rev-parse HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%s | tr '"' "'")
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "full_sha=${FULL_SHA}" >> $GITHUB_OUTPUT
+          echo "commit_msg=${COMMIT_MSG}" >> $GITHUB_OUTPUT
+          echo "=========================================="
+          echo "  COMMIT INFO:"
+          echo "  Short SHA : ${SHORT_SHA}"
+          echo "  Full SHA  : ${FULL_SHA}"
+          echo "  Message   : ${COMMIT_MSG}"
+          echo "=========================================="
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android NDK r29
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r29
+
+      - name: Cache Native Builds (WebRTC & Install)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{runner.workspace}}/webrtc
+            ${{runner.workspace}}/install-android
+          key: ${{ runner.os }}-native-r29-${{ hashFiles('**/CMakeLists.txt', '**/Makefile', 'Build/**') }}
+          restore-keys: |
+            ${{ runner.os }}-native-r29-
+            ${{ runner.os }}-native-
+
+      - name: Install System Dependencies
+        working-directory: ${{github.workspace}}/Build
+        run: |
+          export JAVA_HOME=${{ env.JAVA_HOME }}
+          sudo make depend-ubuntu24-android || echo "Warning: Dependency install skipped."
+
+      - name: Build TeamTalk Library (C++ ARM64 ONLY)
+        working-directory: ${{github.workspace}}/Build
+        run: |
+          make CMAKE_EXTRA="-G Ninja -DWEBRTC_FETCH_PATH=${{runner.workspace}}/webrtc -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/install-android" \
+               CMAKE_BUILD_EXTRA="--target install" android-arm64-v8a
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          JAVA_HOME: ${{ env.JAVA_HOME }}
+
+      # ============================================================
+      # ✅ KEYSTORE PERMANEN VIA GITHUB SECRETS (SHA-1 TIDAK BERUBAH!)
+      # ============================================================
+      # Keystore di-decode dari Base64 Secret → tidak di-generate ulang
+      # SHA-1 Fingerprint akan SELALU SAMA setiap build
+      # ============================================================
+      - name: Decode Permanent Keystore from Secret
+        working-directory: ${{github.workspace}}/Client/TeamTalkAndroid
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "⚠️  RELEASE_KEYSTORE_BASE64 secret belum diset!"
+            echo "⚠️  Generate keystore sementara untuk build ini..."
+            echo "⚠️  SHA-1 AKAN BERUBAH TIAP BUILD!"
+            echo ""
+            echo "=== CARA SETUP PERMANENT KEYSTORE ==="
+            echo "1. Jalankan build ini dulu"
+            echo "2. Salin SHA-1 dari output di bawah"
+            echo "3. Download file 'release-key.keystore' dari artifact"
+            echo "4. Convert ke Base64: base64 release-key.keystore > keystore.b64"
+            echo "5. Paste isi keystore.b64 ke GitHub Secrets → RELEASE_KEYSTORE_BASE64"
+            echo "6. Set juga: KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD"
+            echo "======================================="
+            echo ""
+            keytool -genkeypair -v -keystore release-key.keystore \
+              -alias teamtalk-release -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android123 -keypass android123 \
+              -dname "CN=TeamTalk, OU=Dev, O=TeamTalk, L=Jakarta, ST=DKI, C=ID"
+            cat > keystore.properties <<EOF
+          storeFile=release-key.keystore
+          storePassword=android123
+          keyAlias=teamtalk-release
+          keyPassword=android123
+          EOF
+            echo "TEMPORARY_MODE=true" >> $GITHUB_ENV
+          else
+            echo "✅ Menggunakan PERMANENT keystore dari GitHub Secrets"
+            echo "$KEYSTORE_BASE64" | base64 -d > release-key.keystore
+            cat > keystore.properties <<EOF
+          storeFile=release-key.keystore
+          storePassword=${KEYSTORE_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          keyPassword=${KEY_PASSWORD}
+          EOF
+            echo "TEMPORARY_MODE=false" >> $GITHUB_ENV
+          fi
+
+      # ✅ TAMPILKAN SHA-1 FINGERPRINT (PERMANEN JIKA SECRET SUDAH DISET)
+      - name: 📋 SHA-1 Fingerprint (SALIN INI KE FIREBASE!)
+        working-directory: ${{github.workspace}}/Client/TeamTalkAndroid
+        run: |
+          echo "=========================================="
+          echo "  🔑 SHA-1 FINGERPRINT (Untuk Firebase):"
+          echo "=========================================="
+          keytool -list -v -keystore release-key.keystore \
+            -alias $(grep keyAlias keystore.properties | cut -d= -f2) \
+            -storepass $(grep storePassword keystore.properties | cut -d= -f2) 2>/dev/null | grep SHA1:
+          echo "=========================================="
+          echo ""
+          echo "  📌 Jika SHA-1 ini berubah tiap build,"
+          echo "     berarti secret belum diset."
+          echo "     Ikuti instruksi di step sebelumnya."
+          echo "=========================================="
+
+      # ✅ UPLOAD KEYSTORE SEMENTARA (Hanya jika mode temporary)
+      - name: Upload Temporary Keystore (FIRST TIME ONLY)
+        if: env.TEMPORARY_MODE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ⚠️ DOWNLOAD-THIS-KEYSTORE-FOR-PERMANENT-SHA1
+          path: Client/TeamTalkAndroid/release-key.keystore
+          retention-days: 90
+
+      # ✅ BUILD APK DENGAN COMMIT SHA
+      - name: Build arm64-v8a Release APK
+        working-directory: ${{github.workspace}}/Client/TeamTalkAndroid
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -PCOMMIT_SHA=${{ steps.commit_info.outputs.short_sha }} \
+            -PCOMMIT_FULL=${{ steps.commit_info.outputs.full_sha }} \
+            -PCOMMIT_MSG="${{ steps.commit_info.outputs.commit_msg }}"
+
+      # ✅ RENAME APK DENGAN COMMIT SHA
+      - name: Rename APK with Commit SHA
+        run: |
+          mkdir -p renamed_apk
+          for apk in Client/TeamTalkAndroid/build/outputs/apk/release/*.apk; do
+            if [ -f "$apk" ]; then
+              BASENAME=$(basename "$apk" .apk)
+              cp "$apk" "renamed_apk/${BASENAME}_${{ steps.commit_info.outputs.short_sha }}.apk"
+              echo "✅ ${BASENAME}.apk → ${BASENAME}_${{ steps.commit_info.outputs.short_sha }}.apk"
+            fi
+          done
+          ls -la renamed_apk/
+
+      # ✅ UPLOAD APK ARTIFACT
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeamTalk5-${{ steps.commit_info.outputs.short_sha }}-arm64
+          path: renamed_apk/*.apk
+          if-no-files-found: error
+
+      # ✅ BUILD SUMMARY
+      - name: 📊 Build Summary
+        run: |
+          echo "=========================================="
+          echo "  ✅ BUILD SUCCESS!"
+          echo "=========================================="
+          echo "  Commit SHA  : ${{ steps.commit_info.outputs.short_sha }}"
+          echo "  Full SHA    : ${{ steps.commit_info.outputs.full_sha }}"
+          echo "  Message     : ${{ steps.commit_info.outputs.commit_msg }}"
+          echo "  Artifact    : TeamTalk5-${{ steps.commit_info.outputs.short_sha }}-arm64"
+          echo "  Keystore    : ${{ env.TEMPORARY_MODE == 'true' && '⚠️ TEMPORARY (SHA-1 akan berubah!)' || '✅ PERMANENT (SHA-1 tetap)' }}"
+          echo "=========================================="
