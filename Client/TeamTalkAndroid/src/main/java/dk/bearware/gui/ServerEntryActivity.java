@@ -42,7 +42,7 @@ import java.util.Locale;
 
 import com.google.android.material.textfield.TextInputEditText;
 
-import dk.bearware.gui.databinding.ActivityServerEntryBinding;
+import dk.bearware.gui.ofa.databinding.ActivityServerEntryBinding;
 
 import dk.bearware.TeamTalkBase;
 import dk.bearware.UserAccount;
