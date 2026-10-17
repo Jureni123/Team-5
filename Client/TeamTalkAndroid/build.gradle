@@ -11,13 +11,13 @@ if (ksFile.exists()) {
 }
 
 android {
-    namespace = 'dk.bearware.gui'
+    namespace = 'dk.bearware.gui.ofa'
     compileSdk = 37 
     buildToolsVersion = '37.0.0'
     ndkVersion = '29.0.14206865'
 
     defaultConfig {
-        applicationId = 'dk.bearware.gui'
+        applicationId = 'dk.bearware.gui.ofa'
         minSdk = 23
         targetSdk = 37
         versionCode = 150
