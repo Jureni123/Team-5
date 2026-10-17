@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "2342613364",
+    "project_id": "team5-123",
+    "storage_bucket": "team5-123.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:2342613364:android:0c8a0d9f34da6b08dcfc21",
+        "android_client_info": {
+          "package_name": "dk.bearware.gui"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "2342613364-pn0n1mnbnqb4q21174dbjq7gg3q2i9uc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "dk.bearware.gui",
+            "certificate_hash": "11d8dc33eb58e8cdcf0da45bd4c72c0a902100a5"
+          }
+        },
+        {
+          "client_id": "2342613364-b7ildvubgsmvf5bcp5nj10vtc66ubggr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASQ9Lix6CrEnnTmKFF2wGL5RUaMkboqds"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "2342613364-b7ildvubgsmvf5bcp5nj10vtc66ubggr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,45 @@
+name: Build TeamTalk APK Custom
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Download TeamTalk Native Libraries
+        run: |
+          cd Client/TeamTalkAndroid
+          mkdir -p app/libs
+          if [ -f "../../Library/TeamTalkJNI/libs/TeamTalk5.jar" ]; then
+            cp "../../Library/TeamTalkJNI/libs/TeamTalk5.jar" app/libs/
+          fi
+
+      - name: Grant Execute Permission for Gradlew
+        run: |
+          cd Client/TeamTalkAndroid
+          chmod +x gradlew
+
+      - name: Build Debug APK
+        run: |
+          cd Client/TeamTalkAndroid
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload Finished APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeamTalk5-Custom-APK
+          # Kita gunakan path yang lebih luas agar pasti ketemu
+          path: Client/TeamTalkAndroid/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
