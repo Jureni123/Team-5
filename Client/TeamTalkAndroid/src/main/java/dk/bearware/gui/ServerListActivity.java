@@ -139,8 +139,7 @@ public class ServerListActivity extends AppCompatActivity
         setTitle(R.string.title_activity_server_list);
         executorService = Executors.newFixedThreadPool(2);
     }
-
-    // Fungsi baru untuk auto connect ke server sewaan via Firebase
+// Fungsi baru untuk auto connect ke server sewaan via Firebase
     private void setupAutoConnectButton() {
         Button btnAutoConnect = findViewById(R.id.btn_auto_connect_firebase);
         if (btnAutoConnect == null) return;
@@ -152,9 +151,15 @@ public class ServerListActivity extends AppCompatActivity
                 return;
             }
 
+            // Ambil UID user yang sedang login
+            String currentUid = user.getUid();
+            
+            // Tampilkan UID di Toast agar bisa dicocokkan dengan Firestore
+            Toast.makeText(this, "UID: " + currentUid.substring(0, Math.min(15, currentUid.length())) + "...", Toast.LENGTH_LONG).show();
+            Log.d("FIREBASE_DEBUG", "Mencari dokumen dengan UID: " + currentUid);
+
             FirebaseFirestore db = FirebaseFirestore.getInstance();
-            // Mengambil data berdasarkan UID user yang sedang login
-            db.collection("users").document(user.getUid()).get()
+            db.collection("users").document(currentUid).get()
                 .addOnSuccessListener(document -> {
                     if (document.exists()) {
                         String ttUser = document.getString("teamtalk_username");
@@ -189,12 +194,15 @@ public class ServerListActivity extends AppCompatActivity
                             Toast.makeText(this, "Data akun TT belum lengkap", Toast.LENGTH_LONG).show();
                         }
                     } else {
-                        Toast.makeText(this, "User tidak ditemukan di database", Toast.LENGTH_SHORT).show();
+                        // Pesan error lebih informatif
+                        Toast.makeText(this, "User tidak ditemukan! UID: " + currentUid.substring(0, 10) + "...", Toast.LENGTH_LONG).show();
+                        Log.e("FIREBASE_DEBUG", "Dokumen dengan UID " + currentUid + " tidak ada di Firestore");
                     }
                 })
-                .addOnFailureListener(e -> 
-                    Toast.makeText(this, "Gagal ambil data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Gagal ambil data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e("FIREBASE_DEBUG", "Error mengambil data Firestore", e);
+                });
         });
     }
 
