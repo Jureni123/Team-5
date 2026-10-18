@@ -145,6 +145,10 @@ import dk.bearware.data.TextMessageAdapter;
 import dk.bearware.events.ClientEventListener;
 import dk.bearware.utils.PrefsHelper;
 
+import com.bumptech.glide.Glide;
+ import com.google.firebase.firestore.FirebaseFirestore;
+
+
 public class MainActivity
 extends AppCompatActivity
         implements TeamTalkConnectionListener,
@@ -1227,6 +1231,7 @@ private EditText newmsg;
 
             super.notifyDataSetChanged();
         }
+        /*=================✓==============**/
 
         @Override
         public int getCount() {
@@ -1303,151 +1308,180 @@ private EditText newmsg;
         public int getViewTypeCount() {
             return VIEW_TYPE_COUNT;
         }
+/*==========================✓================*/
+@Override
+public View getView(int position, View convertView, ViewGroup parent) {
 
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
+    Object item = getItem(position);
 
-            Object item = getItem(position);
+    if(item instanceof Channel channel) {
 
-            if(item instanceof Channel channel) {
-
-                switch (getItemViewType(position)) {
-                    case PARENT_CHANNEL_VIEW_TYPE :
-                        // show parent channel shortcut
-                        if (convertView == null ||
-                                convertView.findViewById(R.id.parentname) == null)
-                            convertView = inflater.inflate(R.layout.item_channel_back, parent, false);
-                        break;
-
-                    case CHANNEL_VIEW_TYPE :
-                        if (convertView == null ||
-                                convertView.findViewById(R.id.channelname) == null)
-                            convertView = inflater.inflate(R.layout.item_channel, parent, false);
-
-                        ImageView chanicon = convertView.findViewById(R.id.channelicon);
-                        TextView name = convertView.findViewById(R.id.channelname);
-                        TextView topic = convertView.findViewById(R.id.chantopic);
-                        Button join = convertView.findViewById(R.id.join_btn);
-                        int icon_resource = R.drawable.channel_orange;
-                        if(channel.bPassword) {
-                            icon_resource = R.drawable.channel_pink;
-                            chanicon.setContentDescription(getString(R.string.text_passwdprot));
-                            chanicon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
-                        }
-                        else {
-                            chanicon.setContentDescription(null);
-                            chanicon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-                        }
-                        chanicon.setImageResource(icon_resource);
-
-                        if(channel.nParentID == 0) {
-                            // show server name as channel name for root channel
-                            ServerProperties srvprop = new ServerProperties();
-                            getClient().getServerProperties(srvprop);
-                            name.setText(srvprop.szServerName);
-                        }
-                        else {
-                            name.setText(channel.szName);
-                        }
-                        topic.setText(channel.szTopic);
-
-                        OnClickListener listener = v -> {
-                            if (v.getId() == R.id.join_btn) {
-                                joinChannel(channel);
-                            }
-                        };
-                        join.setOnClickListener(listener);
-                        join.setAccessibilityDelegate(accessibilityAssistant);
-                        join.setEnabled(channel.nChannelID != getClient().getMyChannelID());
-
-                        if (channel.nMaxUsers > 0) {
-                            int population = Utils.getUsers(channel.nChannelID, getService().getUsers()).size();
-                            ((TextView)convertView.findViewById(R.id.population)).setText((population > 0) ? String.format(Locale.ROOT, "(%d)", population) : "");
-                        }
-
-                        break;
-
-                    case INFO_VIEW_TYPE :
-                        if (convertView == null ||
-                                convertView.findViewById(R.id.titletext) == null)
-                            convertView = inflater.inflate(R.layout.item_info, parent, false);
-                        TextView title = convertView.findViewById(R.id.titletext);
-                        TextView details = convertView.findViewById(R.id.infodetails);
-                        title.setText(channel.szName);
-                        details.setText(channel.szTopic);
-                        break;
-                }
-            }
-            else if(item instanceof User user) {
+        switch (getItemViewType(position)) {
+            case PARENT_CHANNEL_VIEW_TYPE :
+                // show parent channel shortcut
                 if (convertView == null ||
-                    convertView.findViewById(R.id.nickname) == null)
-                    convertView = inflater.inflate(R.layout.item_user, parent, false);
-                ImageView usericon = convertView.findViewById(R.id.usericon);
-                TextView nickname = convertView.findViewById(R.id.nickname);
-                TextView status = convertView.findViewById(R.id.status);
-                String name = Utils.getDisplayName(getBaseContext(), user);
-                nickname.setText(name);
-                status.setText(user.szStatusMsg);
-                
-                boolean selected = userIDS.contains(user.nUserID);
-                boolean isOperator = getClient().isChannelOperator(user.nUserID, user.nChannelID);
-                boolean isAdmin = (user.uUserType & UserType.USERTYPE_ADMIN) != 0;
-                boolean talking = (user.uUserState & UserState.USERSTATE_VOICE) != 0;
-                boolean female = (user.nStatusMode & TeamTalkConstants.STATUSMODE_FEMALE) != 0;
-                boolean neutral = (user.nStatusMode & TeamTalkConstants.STATUSMODE_NEUTRAL) != 0;
-                boolean male = !female && !neutral;
-                boolean away =  (user.nStatusMode & TeamTalkConstants.STATUSMODE_AWAY) != 0;
-                int icon_resource;
-                
-                if(user.nUserID == getService().getTTInstance().getMyUserID()) {
-                    talking = getService().isVoiceTransmitting();
+                        convertView.findViewById(R.id.parentname) == null)
+                    convertView = inflater.inflate(R.layout.item_channel_back, parent, false);
+                break;
+
+            case CHANNEL_VIEW_TYPE :
+                if (convertView == null ||
+                        convertView.findViewById(R.id.channelname) == null)
+                    convertView = inflater.inflate(R.layout.item_channel, parent, false);
+
+                ImageView chanicon = convertView.findViewById(R.id.channelicon);
+                TextView name = convertView.findViewById(R.id.channelname);
+                TextView topic = convertView.findViewById(R.id.chantopic);
+                Button join = convertView.findViewById(R.id.join_btn);
+                int icon_resource = R.drawable.channel_orange;
+                if(channel.bPassword) {
+                    icon_resource = R.drawable.channel_pink;
+                    chanicon.setContentDescription(getString(R.string.text_passwdprot));
+                    chanicon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
                 }
-
-                String move = selected ? getString(R.string.user_state_selected) : "";
-                String speaking = talking ? getString(R.string.user_state_now_speaking, name) : name;
-                String gender = female ? " 👩 " : neutral ? " 🧑 " : " 👨 ";
-                String op = isOperator ? getString(R.string.user_state_operator) : "";
-                String admin = isAdmin ? getString(R.string.user_state_admin) : "";
-                nickname.setContentDescription(move + " " + speaking + gender + op + " " + admin);
-
-                if (talking) {
-                    if (female) {
-                        icon_resource = R.drawable.woman_green;
-                    } else {
-                        icon_resource = R.drawable.man_green; // male or neutral
-                    }
-                } else {
-                    if (female) {
-                        icon_resource = away ? R.drawable.woman_orange : R.drawable.woman_blue;
-                    } else {
-                        icon_resource = away ? R.drawable.man_orange : R.drawable.man_blue; // male or neutral
-                    }
+                else {
+                    chanicon.setContentDescription(null);
+                    chanicon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 }
+                chanicon.setImageResource(icon_resource);
 
-                status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
+                if(channel.nParentID == 0) {
+                    // show server name as channel name for root channel
+                    ServerProperties srvprop = new ServerProperties();
+                    getClient().getServerProperties(srvprop);
+                    name.setText(srvprop.szServerName);
+                }
+                else {
+                    name.setText(channel.szName);
+                }
+                topic.setText(channel.szTopic);
 
-                usericon.setImageResource(icon_resource);
-                usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-                
-                Button sndmsg = convertView.findViewById(R.id.msg_btn);
                 OnClickListener listener = v -> {
-                    if (v.getId() == R.id.msg_btn) {
-                        Intent intent = new Intent(MainActivity.this, TextMessageActivity.class);
-                        startActivity(intent.putExtra(TextMessageActivity.EXTRA_USERID, user.nUserID));
+                    if (v.getId() == R.id.join_btn) {
+                        joinChannel(channel);
                     }
                 };
-                sndmsg.setOnClickListener(listener);
-                sndmsg.setAccessibilityDelegate(accessibilityAssistant);
-            }
-            final Object rowItem = item;
-            convertView.setOnClickListener(view -> onChannelItemClick(rowItem));
-            convertView.setOnLongClickListener(view -> onChannelItemLongClick(rowItem, view));
+                join.setOnClickListener(listener);
+                join.setAccessibilityDelegate(accessibilityAssistant);
+                join.setEnabled(channel.nChannelID != getClient().getMyChannelID());
 
-            convertView.setAccessibilityDelegate(accessibilityAssistant);
-            return convertView;
+                if (channel.nMaxUsers > 0) {
+                    int population = Utils.getUsers(channel.nChannelID, getService().getUsers()).size();
+                    ((TextView)convertView.findViewById(R.id.population)).setText((population > 0) ? String.format(Locale.ROOT, "(%d)", population) : "");
+                }
+
+                break;
+
+            case INFO_VIEW_TYPE :
+                if (convertView == null ||
+                        convertView.findViewById(R.id.titletext) == null)
+                    convertView = inflater.inflate(R.layout.item_info, parent, false);
+                TextView title = convertView.findViewById(R.id.titletext);
+                TextView details = convertView.findViewById(R.id.infodetails);
+                title.setText(channel.szName);
+                details.setText(channel.szTopic);
+                break;
         }
     }
+    else if(item instanceof User user) {
+        if (convertView == null ||
+            convertView.findViewById(R.id.nickname) == null)
+            convertView = inflater.inflate(R.layout.item_user, parent, false);
+        
+        ImageView usericon = convertView.findViewById(R.id.usericon);
+        TextView nickname = convertView.findViewById(R.id.nickname);
+        TextView status = convertView.findViewById(R.id.status);
+        String name = Utils.getDisplayName(getBaseContext(), user);
+        nickname.setText(name);
+        status.setText(user.szStatusMsg);
+        
+        boolean selected = userIDS.contains(user.nUserID);
+        boolean isOperator = getClient().isChannelOperator(user.nUserID, user.nChannelID);
+        boolean isAdmin = (user.uUserType & UserType.USERTYPE_ADMIN) != 0;
+        boolean talking = (user.uUserState & UserState.USERSTATE_VOICE) != 0;
+        boolean female = (user.nStatusMode & TeamTalkConstants.STATUSMODE_FEMALE) != 0;
+        boolean neutral = (user.nStatusMode & TeamTalkConstants.STATUSMODE_NEUTRAL) != 0;
+        boolean male = !female && !neutral;
+        boolean away =  (user.nStatusMode & TeamTalkConstants.STATUSMODE_AWAY) != 0;
+        int icon_resource;
+        
+        if(user.nUserID == getService().getTTInstance().getMyUserID()) {
+            talking = getService().isVoiceTransmitting();
+        }
+
+        String move = selected ? getString(R.string.user_state_selected) : "";
+        String speaking = talking ? getString(R.string.user_state_now_speaking, name) : name;
+        String gender = female ? " 👩 " : neutral ? "  " : " 👨 ";
+        String op = isOperator ? getString(R.string.user_state_operator) : "";
+        String admin = isAdmin ? getString(R.string.user_state_admin) : "";
+        nickname.setContentDescription(move + " " + speaking + gender + op + " " + admin);
+
+        if (talking) {
+            if (female) {
+                icon_resource = R.drawable.woman_green;
+            } else {
+                icon_resource = R.drawable.man_green; // male or neutral
+            }
+        } else {
+            if (female) {
+                icon_resource = away ? R.drawable.woman_orange : R.drawable.woman_blue;
+            } else {
+                icon_resource = away ? R.drawable.man_orange : R.drawable.man_blue; // male or neutral
+            }
+        }
+
+        status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
+
+        // ✅ MODIFIKASI: LOAD FOTO PROFIL DARI FIRESTORE
+        String uid = String.valueOf(user.nUserID);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        
+        db.collection("pengguna").document(uid)
+          .get()
+          .addOnSuccessListener(doc -> {
+              if (doc.exists()) {
+                  String url = doc.getString("foto_profil_url");
+                  if (url != null && !url.isEmpty()) {
+                      // Jika ada foto di database, tampilkan pakai Glide
+                      Glide.with(MainActivity.this)
+                           .load(url)
+                           .circleCrop()           // Buat foto jadi bulat
+                           .placeholder(icon_resource) // Tampilkan icon default sambil loading
+                           .error(icon_resource)       // Kalau gagal load, balik ke icon default
+                           .into(usericon);
+                      return; 
+                  }
+              }
+              // Jika tidak ada data atau URL kosong, pakai icon default TeamTalk
+              usericon.setImageResource(icon_resource);
+          })
+          .addOnFailureListener(e -> {
+              // Kalau error network/database, tetap pakai icon default
+              usericon.setImageResource(icon_resource);
+          });
+
+        usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        
+        Button sndmsg = convertView.findViewById(R.id.msg_btn);
+        OnClickListener msgListener = v -> {
+            if (v.getId() == R.id.msg_btn) {
+                Intent intent = new Intent(MainActivity.this, TextMessageActivity.class);
+                startActivity(intent.putExtra(TextMessageActivity.EXTRA_USERID, user.nUserID));
+            }
+        };
+        sndmsg.setOnClickListener(msgListener);
+        sndmsg.setAccessibilityDelegate(accessibilityAssistant);
+    }
     
+    final Object rowItem = item;
+    convertView.setOnClickListener(view -> onChannelItemClick(rowItem));
+    convertView.setOnLongClickListener(view -> onChannelItemLongClick(rowItem, view));
+
+    convertView.setAccessibilityDelegate(accessibilityAssistant);
+    return convertView;
+}
+
+    /*+++++++++++++++*/
     void createStatusTimer() {
         
         final TextView connection = findViewById(R.id.connectionstat_textview);
