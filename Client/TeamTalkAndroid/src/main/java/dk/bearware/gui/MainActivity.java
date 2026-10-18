@@ -270,17 +270,17 @@ extends AppCompatActivity
 
         // ✅ INISIALISASI ADAPTER BARU YANG TERHUBUNG KE FILE TERPISAH
         channelsAdapter = new ChannelListAdapter(
-            this, 
-            getService(), 
-            getClient(), 
-            prefs, 
-            userIDS, 
-            new ChannelListAdapter.OnChannelItemClickListener() {
-                @Override public void onChannelItemClick(Object item) { MainActivity.this.onChannelItemClick(item); }
-                @Override public void onChannelItemLongClick(Object item, View v) { MainActivity.this.onChannelItemLongClick(item, v); }
-                @Override public void joinChannel(Channel channel) { MainActivity.this.joinChannel(channel); }
-            }
-        );
+        this, 
+        getService(), 
+        getClient(), 
+        prefs, 
+        userIDS, 
+        new ChannelListAdapter.OnChannelItemClickListener() {
+            @Override public void onChannelItemClick(Object item) { MainActivity.this.onChannelItemClick(item); }
+            @Override public void onChannelItemLongClick(Object item, View v) { MainActivity.this.onChannelItemLongClick(item, v); }
+            @Override public void joinChannel(Channel channel) { MainActivity.this.joinChannel(channel); }
+        }
+    );
 
         filesAdapter = new FileListAdapter(this, this, accessibilityAssistant);
         textmsgAdapter = new TextMessageAdapter(this, accessibilityAssistant);
