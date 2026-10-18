@@ -1802,7 +1802,7 @@ extends AppCompatActivity
         }
     }
 
-    @Override
+@Override
     public void onVoiceTransmissionToggle(boolean voiceTransmissionEnabled, boolean isSuspended) {
         adjustTxState(voiceTransmissionEnabled);
         if (!isSuspended) {
@@ -1810,8 +1810,14 @@ extends AppCompatActivity
             if (voiceTransmissionEnabled) {
                 accessibilityAssistant.shutUp();
                 if (sounds.get(SOUND_VOICETXON) != 0) audioIcons.play(sounds.get(SOUND_VOICETXON), 1.0f, 1.0f, 0, 0, 1.0f);
-                if (ptt_vibrate) { Vibrator vibrat = (Vibrator) getSystemService(Context.VIB
-				/*========*/
+                if (ptt_vibrate) { Vibrator vibrat = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); vibrat.vibrate(50); }
+            } else {
+                if (sounds.get(SOUND_VOICETXOFF) != 0) audioIcons.play(sounds.get(SOUND_VOICETXOFF), 1.0f, 1.0f, 0, 0, 1.0f);
+                if (ptt_vibrate) { Vibrator vibrat = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE); vibrat.vibrate(new long[]{ 0, 20, 80, 20 }, -1); }
+            }
+        }
+    } // <--- METHOD INI HARUS TUTUP DI SINI
+
 					@Override
     public void onCmdProcessing(int cmdId, boolean complete) { if(complete) activecmds.remove(cmdId); }
     @Override public void onCmdMyselfLoggedIn(int my_userid, UserAccount useraccount) { textmsgAdapter.setMyUserID(my_userid); }
