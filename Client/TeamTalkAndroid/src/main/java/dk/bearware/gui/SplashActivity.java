@@ -10,7 +10,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -44,9 +43,13 @@ public class SplashActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // ✅ CEK: SUDAH LOGIN? → LANGSUNG KE SERVER LIST
+        // ✅ CEK: SUDAH LOGIN?
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
+            // PENTING: Cek & Update Foto Profil setiap kali app dibuka
+            // Ini menjamin jika user ganti foto di Google, database ikut terupdate
+            savePhotoUrlToFirestore(); 
+            
             goToServerList();
             return;
         }
@@ -60,26 +63,20 @@ public class SplashActivity extends AppCompatActivity {
             tvStatus.setText("Silakan login untuk melanjutkan");
         }
 
-        // ✅ KONFIGURASI GOOGLE SIGN-IN DENGAN SAFE FALLBACK
+        // ✅ KONFIGURASI GOOGLE SIGN-IN
         try {
             String webClientId = getString(R.string.default_web_client_id);
-
             GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestIdToken(webClientId)
                     .requestEmail()
                     .build();
-
             mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
         } catch (Exception e) {
-            // FALLBACK: google-services.json belum ada → tetap bisa jalan tanpa ID token
             GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestEmail()
                     .build();
             mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-
-            if (tvStatus != null) {
-                tvStatus.setText("⚠️ Mode terbatas: google-services.json belum dikonfigurasi");
-            }
+            if (tvStatus != null) tvStatus.setText("⚠️ Mode terbatas");
         }
 
         SignInButton signInButton = findViewById(R.id.sign_in_button);
@@ -92,7 +89,6 @@ public class SplashActivity extends AppCompatActivity {
     private void signIn() {
         if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
         if (tvStatus != null) tvStatus.setText("Membuka Google Sign-In...");
-
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
@@ -104,40 +100,27 @@ public class SplashActivity extends AppCompatActivity {
         if (requestCode == RC_SIGN_IN) {
             if (progressBar != null) progressBar.setVisibility(View.GONE);
 
-            // ✅ USER BATAL PILIH AKUN
             if (data == null) {
-                if (tvStatus != null) tvStatus.setText("Login dibatalkan");
                 Toast.makeText(this, "Login dibatalkan", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-
-            // ✅ TASK GAGAL
             if (task == null || !task.isSuccessful()) {
-                if (tvStatus != null) tvStatus.setText("Gagal mendapatkan akun Google");
                 Toast.makeText(this, "Gagal mendapatkan akun Google", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             try {
                 GoogleSignInAccount account = task.getResult();
-
-                // ✅ ACCOUNT NULL
                 if (account == null) {
-                    if (tvStatus != null) tvStatus.setText("Akun Google kosong");
                     Toast.makeText(this, "Akun Google kosong", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
                 String idToken = account.getIdToken();
-
-                // ✅ TIDAK ADA ID TOKEN (fallback mode) → anggap berhasil
                 if (idToken == null || idToken.isEmpty()) {
-                    if (tvStatus != null) tvStatus.setText("✅ Login berhasil! Mengalihkan...");
-                    Toast.makeText(this, "Login berhasil!", Toast.LENGTH_SHORT).show();
-                    
-                    // Simpan profil meski tanpa ID Token
+                    // Fallback mode
                     savePhotoUrlToFirestore(); 
                     goToServerList();
                     return;
@@ -146,9 +129,7 @@ public class SplashActivity extends AppCompatActivity {
                 firebaseAuthWithGoogle(idToken);
 
             } catch (Exception e) {
-                if (tvStatus != null) tvStatus.setText("Error: " + e.getMessage());
-                Toast.makeText(this, "Error login: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                e.printStackTrace();
+                Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -160,86 +141,67 @@ public class SplashActivity extends AppCompatActivity {
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        // ✅ LOGIN BERHASIL!
                         FirebaseUser user = mAuth.getCurrentUser();
                         String email = (user != null) ? user.getEmail() : "unknown";
-
+                        
                         if (tvStatus != null) tvStatus.setText("✅ Login berhasil! (" + email + ")");
                         Toast.makeText(this, "Login berhasil! Selamat datang.", Toast.LENGTH_SHORT).show();
 
-                        // ✅ SIMPAN URL FOTO PROFIL KE FIRESTORE
+                        // ✅ SIMPAN URL FOTO PROFIL KE FIRESTORE SAAT LOGIN BERHASIL
                         savePhotoUrlToFirestore();
 
-                        // ✅ PINDAH KE ServerListActivity
                         goToServerList();
 
                     } else {
-                        // ✅ LOGIN GAGAL — FEEDBACK JELAS
                         String errorMsg = "Login gagal";
-                        if (task.getException() != null) {
-                            errorMsg = task.getException().getMessage();
-                        }
-
+                        if (task.getException() != null) errorMsg = task.getException().getMessage();
                         if (tvStatus != null) tvStatus.setText(" " + errorMsg);
                         Toast.makeText(this, "Login gagal: " + errorMsg, Toast.LENGTH_LONG).show();
-
                         if (progressBar != null) progressBar.setVisibility(View.GONE);
                     }
                 });
     }
 
     /**
-     * ✅ FUNGSI BARU: MENYIMPAN URL FOTO PROFIL KE FIRESTORE + DEBUG TOAST
+     * ✅ FUNGSI UTAMA: MENYIMPAN/UPDATE FOTO PROFIL
+     * - Dipanggil saat Login Baru
+     * - Dipanggil saat App Dibuka (untuk cek perubahan foto)
      */
     private void savePhotoUrlToFirestore() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         
         if (currentUser != null) {
             String uid = currentUser.getUid(); 
-            String photoUrl = "";
             
-            // Ambil URL foto, jika tidak ada pakai string kosong
+            // Cek apakah foto tersedia
             if (currentUser.getPhotoUrl() != null) {
-                photoUrl = currentUser.getPhotoUrl().toString();
+                String photoUrl = currentUser.getPhotoUrl().toString();
+                
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("foto_profil_url", photoUrl);
+                
+                // Gunakan merge agar field lain (password server, dll) tidak hilang
+                db.collection("pengguna").document(uid)
+                  .set(updates, SetOptions.merge())
+                  .addOnSuccessListener(aVoid -> {
+                      Log.d(TAG, "Foto profil di-update untuk UID: " + uid);
+                      // Opsional: Toast sukses (bisa dimatikan kalau ganggu)
+                      // Toast.makeText(SplashActivity.this, "Profil diperbarui", Toast.LENGTH_SHORT).show();
+                  })
+                  .addOnFailureListener(e -> {
+                      Log.e(TAG, "Gagal update foto", e);
+                  });
+            } else {
+                // Jika foto null, coba lagi dalam 3 detik (handling delay Google Auth)
+                Log.d(TAG, "Foto belum siap, retry dalam 3 detik...");
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    savePhotoUrlToFirestore();
+                }, 3000);
             }
-
-            // 🔍 TOAST DEBUG 1: Cek Data Sebelum Kirim
-            String statusFoto = photoUrl.isEmpty() ? "KOSONG/NULL" : "ADA URL";
-            Toast.makeText(this, 
-                "🔍 DEBUG:\nUID: " + uid.substring(0, Math.min(uid.length(), 8)) + "...\nFoto: " + statusFoto, 
-                Toast.LENGTH_LONG).show();
-
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-            
-            // Siapkan data yang akan disimpan
-            Map<String, Object> updates = new HashMap<>();
-            updates.put("foto_profil_url", photoUrl);
-            
-            // Update dokumen user di collection 'pengguna'
-            db.collection("pengguna").document(uid)
-              .set(updates, SetOptions.merge())
-              .addOnSuccessListener(aVoid -> {
-                  // ✅ TOAST DEBUG 2: Konfirmasi Sukses
-                  Toast.makeText(SplashActivity.this, 
-                      "✅ BERHASIL SIMPAN!\nCek Firestore UID: " + uid.substring(0, Math.min(uid.length(), 8)), 
-                      Toast.LENGTH_LONG).show();
-                  Log.d(TAG, "URL Foto berhasil disimpan untuk UID: " + uid);
-              })
-              .addOnFailureListener(e -> {
-                  //  TOAST DEBUG 3: Laporan Kegagalan
-                  Toast.makeText(SplashActivity.this, 
-                      "❌ GAGAL SIMPAN:\n" + e.getMessage(), 
-                      Toast.LENGTH_LONG).show();
-                  Log.e(TAG, "Gagal simpan URL foto", e);
-              });
-        } else {
-            Toast.makeText(this, "️ User NULL! Save dibatalkan.", Toast.LENGTH_SHORT).show();
         }
     }
 
-    /**
-     * ✅ PINDAH KE ServerListActivity
-     */
     private void goToServerList() {
         Intent intent = new Intent(this, ServerListActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
