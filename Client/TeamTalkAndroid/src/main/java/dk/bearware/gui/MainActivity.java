@@ -1,25 +1,6 @@
 /*
  * Copyright (c) 2005-2018, BearWare.dk
- * 
- * Contact Information:
- *
- * Bjoern D. Rasmussen
- * Kirketoften 5
- * DK-8260 Viby J
- * Denmark
- * Email: contact@bearware.dk
- * Phone: +45 20 20 54 59
- * Web: http://www.bearware.dk
- *
- * This source code is part of the TeamTalk SDK owned by
- * BearWare.dk. Use of this file, or its compiled unit, requires a
- * TeamTalk SDK License Key issued by BearWare.dk.
- *
- * The TeamTalk SDK License Agreement along with its Terms and
- * Conditions are outlined in the file License.txt included with the
- * TeamTalk SDK distribution.
  */
-
 package dk.bearware.gui;
 
 import android.app.Activity;
@@ -72,7 +53,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.PopupMenu;
-import android.widget.PopupMenu.OnMenuItemClickListener;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -144,10 +124,9 @@ import dk.bearware.data.TextMessageAdapter;
 import dk.bearware.events.ClientEventListener;
 import dk.bearware.utils.PrefsHelper;
 
-public class MainActivity
-extends AppCompatActivity
+public class MainActivity extends AppCompatActivity
         implements TeamTalkConnectionListener,
-        OnMenuItemClickListener,
+        PopupMenu.OnMenuItemClickListener,
         SensorEventListener,
         OnVoiceTransmissionToggleListener,
         ClientEventListener.OnConnectionLostListener,
@@ -208,33 +187,20 @@ extends AppCompatActivity
 
     static final String MESSAGE_NOTIFICATION_TAG = "incoming_message";
 
-    final int SOUND_VOICETXON = 1,
-              SOUND_VOICETXOFF = 2,
-              SOUND_USERMSG = 3,
-              SOUND_CHANMSG = 4,
-              SOUND_BCASTMSG = 5,
-              SOUND_SERVERLOST = 6,
-              SOUND_FILESUPDATE = 7,
-              SOUND_VOXENABLE = 8,
-              SOUND_VOXDISABLE = 9,
-              SOUND_VOXON = 10,
-              SOUND_VOXOFF = 11,
-              SOUND_TXREADY = 12,
-              SOUND_TXSTOP = 13,
-              SOUND_USERJOIN = 14,
-              SOUND_USERLEFT = 15,
-              SOUND_USERLOGGEDIN = 16,
-              SOUND_USERLOGGEDOFF = 17,
-              SOUND_INTERCEPTON = 18,
-              SOUND_INTERCEPTOFF = 19,
-              SOUND_TYPING = 20,
-              SOUND_CHANMSGSENT = 21;
+    final int SOUND_VOICETXON = 1, SOUND_VOICETXOFF = 2, SOUND_USERMSG = 3,
+              SOUND_CHANMSG = 4, SOUND_BCASTMSG = 5, SOUND_SERVERLOST = 6,
+              SOUND_FILESUPDATE = 7, SOUND_VOXENABLE = 8, SOUND_VOXDISABLE = 9,
+              SOUND_VOXON = 10, SOUND_VOXOFF = 11, SOUND_TXREADY = 12,
+              SOUND_TXSTOP = 13, SOUND_USERJOIN = 14, SOUND_USERLEFT = 15,
+              SOUND_USERLOGGEDIN = 16, SOUND_USERLOGGEDOFF = 17,
+              SOUND_INTERCEPTON = 18, SOUND_INTERCEPTOFF = 19,
+              SOUND_TYPING = 20, SOUND_CHANMSGSENT = 21;
     
     SparseIntArray sounds = new SparseIntArray();
 
     private Context ctx;
     private PrefsHelper prefs;
-    List<Integer> userIDS = new ArrayList<>(); // Pindahkan deklarasi userIDS ke sini agar bisa diakses adapter
+    List<Integer> userIDS = new ArrayList<>();
 
     public ChannelListAdapter getChannelsAdapter() { return channelsAdapter; }
     public FileListAdapter getFilesAdapter() { return filesAdapter; }
@@ -268,20 +234,9 @@ extends AppCompatActivity
         wakeLock.setReferenceCounted(false);
         proximityWakeLock.setReferenceCounted(false);
 
-        // ✅ INISIALISASI ADAPTER BARU YANG TERHUBUNG KE FILE TERPISAH
-        channelsAdapter = new ChannelListAdapter(
-        this, 
-        getService(), 
-        getClient(), 
-        prefs, 
-        userIDS, 
-        new ChannelListAdapter.OnChannelItemClickListener() {
-            @Override public void onChannelItemClick(Object item) { MainActivity.this.onChannelItemClick(item); }
-            @Override public void onChannelItemLongClick(Object item, View v) { MainActivity.this.onChannelItemLongClick(item, v); }
-            @Override public void joinChannel(Channel channel) { MainActivity.this.joinChannel(channel); }
-        }
-    );
-
+        // ️ ADAPTER DI-CREATE DISINI TAPI BELUM DI-INISIALISASI LENGKAP KARENA SERVICE BELUM READY
+        // Kita init lengkapnya nanti di initializeTeamTalkService()
+        
         filesAdapter = new FileListAdapter(this, this, accessibilityAssistant);
         textmsgAdapter = new TextMessageAdapter(this, accessibilityAssistant);
         mediaAdapter = new MediaAdapter(this.getBaseContext());
@@ -397,7 +352,7 @@ extends AppCompatActivity
                 mViewPager.setCurrentItem(SectionsPagerAdapter.CHANNELS_PAGE);
             } else if ((curchannel != null)) {
                 setCurrentChannel(parentChannel);
-                channelsAdapter.notifyDataSetChanged();
+                if(channelsAdapter != null) channelsAdapter.notifyDataSetChanged();
             } else if (filesAdapter.getActiveTransfersCount() > 0) {
                 alert.setMessage(R.string.disconnect_alert);
                 alert.setPositiveButton(android.R.string.ok, (dialog, whichButton) -> {
@@ -758,7 +713,7 @@ extends AppCompatActivity
     public void leaveChannel() {
         getClient().doLeaveChannel();
         accessibilityAssistant.lockEvents();
-        channelsAdapter.notifyDataSetChanged();
+        if(channelsAdapter != null) channelsAdapter.notifyDataSetChanged();
         accessibilityAssistant.unlockEvents();
     }
 
@@ -849,7 +804,9 @@ extends AppCompatActivity
             View rootView = inflater.inflate(R.layout.fragment_main_channels, container, false);
             mainActivity.accessibilityAssistant.registerPage(rootView, SectionsPagerAdapter.CHANNELS_PAGE);
             ListView channelsList = rootView.findViewById(R.id.listChannels);
-            channelsList.setAdapter(mainActivity.getChannelsAdapter());
+            if(mainActivity.getChannelsAdapter() != null) {
+                channelsList.setAdapter(mainActivity.getChannelsAdapter());
+            }
             return rootView;
         }
     }
@@ -922,8 +879,6 @@ extends AppCompatActivity
         }
     }
 
-    // ✅ INNER CLASS ADAPTER LAMA SUDAH DIHAPUS TOTAL DI SINI
-
     void createStatusTimer() {
         final TextView connection = findViewById(R.id.connectionstat_textview);
         final TextView ping = findViewById(R.id.pingstat_textview);
@@ -972,7 +927,7 @@ extends AppCompatActivity
             startActivityForResult(new Intent(this, UserPropActivity.class).putExtra(UserPropActivity.EXTRA_USERID, user.nUserID), REQUEST_EDITUSER);
         } else if(item instanceof Channel channel) {
             setCurrentChannel((channel.nChannelID > 0) ? channel : null);
-            channelsAdapter.notifyDataSetChanged();
+            if(channelsAdapter != null) channelsAdapter.notifyDataSetChanged();
         }
     }
 
@@ -1088,7 +1043,7 @@ extends AppCompatActivity
             if (userIDS.contains(selectedUser.nUserID)) userIDS.remove((Integer) selectedUser.nUserID);
             else userIDS.add(selectedUser.nUserID);
             accessibilityAssistant.lockEvents();
-            channelsAdapter.notifyDataSetChanged();
+            if(channelsAdapter != null) channelsAdapter.notifyDataSetChanged();
             accessibilityAssistant.unlockEvents();
         } else if (itemId == R.id.action_allowvoice) {
             boolean allowed = Utils.isTransmitAllowed(everyone, selectedChannel, StreamType.STREAMTYPE_VOICE);
@@ -1164,7 +1119,7 @@ extends AppCompatActivity
         accessibilityAssistant.lockEvents();
         findViewById(R.id.transmit_voice).setBackgroundColor(txEnabled ? Color.GREEN : Color.RED);
         findViewById(R.id.transmit_voice).setContentDescription(txEnabled ? getString(R.string.tx_on) : getString(R.string.tx_off));
-        if ((curchannel != null) && (getClient().getMyChannelID() == curchannel.nChannelID)) channelsAdapter.notifyDataSetChanged();
+        if ((curchannel != null) && (getClient().getMyChannelID() == curchannel.nChannelID) && channelsAdapter != null) channelsAdapter.notifyDataSetChanged();
         accessibilityAssistant.unlockEvents();
     }
 
@@ -1269,6 +1224,21 @@ extends AppCompatActivity
 
     private void initializeTeamTalkService(TeamTalkService service) {
         this.users = new HashMap<>(service.getUsers());
+        
+        // ✅ INISIALISASI ADAPTER BARU DI SINI (SAAT SERVICE SUDAH READY)
+        channelsAdapter = new ChannelListAdapter(
+            this, 
+            service, 
+            getClient(), 
+            prefs, 
+            userIDS, 
+            new ChannelListAdapter.OnChannelItemClickListener() {
+                @Override public void onChannelItemClick(Object item) { MainActivity.this.onChannelItemClick(item); }
+                @Override public void onChannelItemLongClick(Object item, View v) { MainActivity.this.onChannelItemLongClick(item, v); }
+                @Override public void joinChannel(Channel channel) { MainActivity.this.joinChannel(channel); }
+            }
+        );
+
         int mychanid = getClient().getMyChannelID();
         if (mychanid > 0) { setCurrentChannel(service.getChannels().get(mychanid)); setMyChannel(service.getChannels().get(mychanid)); }
         mSectionsPagerAdapter.onPageSelected(mViewPager.getCurrentItem());
@@ -1376,9 +1346,9 @@ extends AppCompatActivity
 
     @Override public void onCmdProcessing(int cmdId, boolean complete) { if(complete) activecmds.remove(cmdId); }
     @Override public void onCmdMyselfLoggedIn(int my_userid, UserAccount useraccount) { textmsgAdapter.setMyUserID(my_userid); }
-    @Override public void onCmdMyselfLoggedOut() { accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents(); }
-    @Override public void onCmdMyselfKickedFromChannel() { accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents(); }
-    @Override public void onCmdMyselfKickedFromChannel(User kicker) { accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents(); }
+    @Override public void onCmdMyselfLoggedOut() { accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents(); }
+    @Override public void onCmdMyselfKickedFromChannel() { accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents(); }
+    @Override public void onCmdMyselfKickedFromChannel(User kicker) { accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents(); }
 
     @Override
     public void onCmdUserLoggedIn(User user) {
@@ -1405,7 +1375,7 @@ extends AppCompatActivity
     @Override
     public void onCmdUserUpdate(User user) {
         if(curchannel != null && curchannel.nChannelID == user.nChannelID) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
         subscriptionChange(user);
         users.put(user.nUserID, user);
@@ -1418,12 +1388,12 @@ extends AppCompatActivity
         if(user.nUserID == getClient().getMyUserID()) {
             Channel chan = getService().getChannels().get(user.nChannelID);
             setCurrentChannel(chan); filesAdapter.update(curchannel); setMyChannel(chan);
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         } else if(curchannel != null && curchannel.nChannelID == user.nChannelID) { /* other user joined current channel */ }
         
         if(mychannel != null && mychannel.nChannelID == user.nChannelID) {
             if(user.nUserID != getClient().getMyUserID()) {
-                accessibilityAssistant.lockEvents(); textmsgAdapter.notifyDataSetChanged(); channelsAdapter.notifyDataSetChanged();
+                accessibilityAssistant.lockEvents(); textmsgAdapter.notifyDataSetChanged(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged();
                 if (getClient().getMyChannelID() == user.nChannelID) {
                     if (sounds.get(SOUND_USERJOIN) != 0) audioIcons.play(sounds.get(SOUND_USERJOIN), 1.0f, 1.0f, 0, 0, 1.0f);
                     if (ttsWrapper != null && prefs.get("channel_join_checkbox", false)) {
@@ -1432,14 +1402,14 @@ extends AppCompatActivity
                     }
                 }
                 accessibilityAssistant.unlockEvents();
-            } else { textmsgAdapter.notifyDataSetChanged(); channelsAdapter.notifyDataSetChanged(); }
+            } else { textmsgAdapter.notifyDataSetChanged(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); }
         } else if (user.nUserID != getClient().getMyUserID() && ttsWrapper != null && prefs.get("all_channel_join_checkbox", false)) {
             String name = Utils.getDisplayName(getBaseContext(), user);
             Channel targetChan = getService().getChannels().get(user.nChannelID);
             String chanName = (targetChan.nParentID == 0) ? getString(R.string.text_root_chan) : targetChan.szName;
             ttsWrapper.speak(getString(R.string.text_tts_user_joined_other_channel, name, chanName));
         } else if (isVisibleChannel(user.nChannelID)) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
     }
 
@@ -1453,7 +1423,7 @@ extends AppCompatActivity
         }
         
         if(mychannel != null && mychannel.nChannelID == channelid) {
-            accessibilityAssistant.lockEvents(); textmsgAdapter.notifyDataSetChanged(); channelsAdapter.notifyDataSetChanged();
+            accessibilityAssistant.lockEvents(); textmsgAdapter.notifyDataSetChanged(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged();
             if (getClient().getMyChannelID() == channelid) {
                 if (sounds.get(SOUND_USERLEFT) != 0) audioIcons.play(sounds.get(SOUND_USERLEFT), 1.0f, 1.0f, 0, 0, 1.0f);
                 if (ttsWrapper != null && prefs.get("channel_leave_checkbox", false)) {
@@ -1468,7 +1438,7 @@ extends AppCompatActivity
             String chanName = (targetChan.nParentID == 0) ? getString(R.string.text_root_chan) : targetChan.szName;
             ttsWrapper.speak(getString(R.string.text_tts_user_left_other_channel, name, chanName));
         } else if (isVisibleChannel(channelid)) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
     }
 
@@ -1544,14 +1514,14 @@ extends AppCompatActivity
     @Override
     public void onCmdChannelNew(Channel channel) {
         if (curchannel != null && curchannel.nChannelID == channel.nParentID) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
     }
 
     @Override
     public void onCmdChannelUpdate(Channel channel) {
         if (curchannel != null && curchannel.nChannelID == channel.nParentID) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
         if(mychannel != null && mychannel.nChannelID == channel.nChannelID) {
             if (ttsWrapper != null) Utils.ttsTransmitUsersToggled(getBaseContext(), mychannel, channel, getService().getUsers()).ifPresent(text -> ttsWrapper.speak(text));
@@ -1570,7 +1540,7 @@ extends AppCompatActivity
     @Override
     public void onCmdChannelRemove(Channel channel) {
         if (curchannel != null && curchannel.nChannelID == channel.nParentID) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
     }
 
@@ -1599,7 +1569,7 @@ extends AppCompatActivity
     public void onUserStateChange(User user) {
         users.put(user.nUserID, user);
         if (curchannel != null && user.nChannelID == curchannel.nChannelID) {
-            accessibilityAssistant.lockEvents(); channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
+            accessibilityAssistant.lockEvents(); if(channelsAdapter!=null) channelsAdapter.notifyDataSetChanged(); accessibilityAssistant.unlockEvents();
         }
     }
 
