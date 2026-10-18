@@ -137,7 +137,7 @@ public class SplashActivity extends AppCompatActivity {
                     if (tvStatus != null) tvStatus.setText("✅ Login berhasil! Mengalihkan...");
                     Toast.makeText(this, "Login berhasil!", Toast.LENGTH_SHORT).show();
                     
-                    // Simpan profil meski tanpa ID Token (jika user sudah pernah login sebelumnya)
+                    // Simpan profil meski tanpa ID Token
                     savePhotoUrlToFirestore(); 
                     goToServerList();
                     return;
@@ -189,19 +189,25 @@ public class SplashActivity extends AppCompatActivity {
     }
 
     /**
-     * ✅ FUNGSI BARU: MENYIMPAN URL FOTO PROFIL KE FIRESTORE
+     * ✅ FUNGSI BARU: MENYIMPAN URL FOTO PROFIL KE FIRESTORE + DEBUG TOAST
      */
     private void savePhotoUrlToFirestore() {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         
         if (currentUser != null) {
-            String uid = currentUser.getUid(); // ID unik user dari Firebase Auth
+            String uid = currentUser.getUid(); 
             String photoUrl = "";
             
             // Ambil URL foto, jika tidak ada pakai string kosong
             if (currentUser.getPhotoUrl() != null) {
                 photoUrl = currentUser.getPhotoUrl().toString();
             }
+
+            // 🔍 TOAST DEBUG 1: Cek Data Sebelum Kirim
+            String statusFoto = photoUrl.isEmpty() ? "KOSONG/NULL" : "ADA URL";
+            Toast.makeText(this, 
+                "🔍 DEBUG:\nUID: " + uid.substring(0, Math.min(uid.length(), 8)) + "...\nFoto: " + statusFoto, 
+                Toast.LENGTH_LONG).show();
 
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             
@@ -210,20 +216,29 @@ public class SplashActivity extends AppCompatActivity {
             updates.put("foto_profil_url", photoUrl);
             
             // Update dokumen user di collection 'pengguna'
-            // Menggunakan SetOptions.merge() agar field lain (seperti kata sandi teamtalk) tidak terhapus
             db.collection("pengguna").document(uid)
               .set(updates, SetOptions.merge())
               .addOnSuccessListener(aVoid -> {
+                  // ✅ TOAST DEBUG 2: Konfirmasi Sukses
+                  Toast.makeText(SplashActivity.this, 
+                      "✅ BERHASIL SIMPAN!\nCek Firestore UID: " + uid.substring(0, Math.min(uid.length(), 8)), 
+                      Toast.LENGTH_LONG).show();
                   Log.d(TAG, "URL Foto berhasil disimpan untuk UID: " + uid);
               })
               .addOnFailureListener(e -> {
+                  //  TOAST DEBUG 3: Laporan Kegagalan
+                  Toast.makeText(SplashActivity.this, 
+                      "❌ GAGAL SIMPAN:\n" + e.getMessage(), 
+                      Toast.LENGTH_LONG).show();
                   Log.e(TAG, "Gagal simpan URL foto", e);
               });
+        } else {
+            Toast.makeText(this, "️ User NULL! Save dibatalkan.", Toast.LENGTH_SHORT).show();
         }
     }
 
     /**
-     * ✅ PINDAH KE ServerListActivity — TEMPAT USER PILIH/KONEKSI SERVER
+     * ✅ PINDAH KE ServerListActivity
      */
     private void goToServerList() {
         Intent intent = new Intent(this, ServerListActivity.class);
