@@ -10,7 +10,8 @@
  * Email: contact@bearware.dk
  * Phone: +45 20 20 54 59
  * Web: http://www.bearware.dk
- *modifed by Jureni123
+ *
+ * modifed by Jureni123
  * This source code is part of the TeamTalk SDK owned by
  * BearWare.dk. Use of this file, or its compiled unit, requires a
  * TeamTalk SDK License Key issued by BearWare.dk.
@@ -109,6 +110,9 @@ public class ServerListActivity extends AppCompatActivity
     private TextView emptyView;
     private ExecutorService executorService;
     
+    // Tombol Auto Connect
+    private Button btnAutoConnect;
+    
     private final Vector<ServerEntry> servers = new Vector<>();
 
     private static final String TAG = "bearware";
@@ -171,7 +175,7 @@ public class ServerListActivity extends AppCompatActivity
     // Mengambil data dari dokumen 'public_guest' di Firestore
     // ============================================================
     private void setupAutoConnectButton() {
-        Button btnAutoConnect = findViewById(R.id.btn_auto_connect_firebase);
+        btnAutoConnect = findViewById(R.id.btn_auto_connect_firebase);
         if (btnAutoConnect == null) return;
 
         btnAutoConnect.setOnClickListener(v -> {
@@ -180,6 +184,13 @@ public class ServerListActivity extends AppCompatActivity
                 Toast.makeText(this, "Silakan login Google dulu", Toast.LENGTH_SHORT).show();
                 return;
             }
+
+            // ✅ FEEDBACK VISUAL LANGSUNG SAAT DIKLIK
+            btnAutoConnect.setText("⏳ MENGHUBUNGKAN...");
+            btnAutoConnect.setEnabled(false);
+            btnAutoConnect.setAlpha(0.7f);
+            
+            Toast.makeText(this, "Mengambil data server dari Firebase...", Toast.LENGTH_SHORT).show();
 
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             
@@ -221,20 +232,34 @@ public class ServerListActivity extends AppCompatActivity
                             
                             if (!getService().reconnect()) {
                                 showToast(getString(R.string.err_connection));
+                                resetAutoConnectButton(); // Reset tombol jika gagal konek
                             } else {
-                                showToast("Menghubungkan sebagai " + googleName + "...");
+                                showToast("✅ Berhasil terhubung sebagai " + googleName + "...");
+                                // Biarkan tombol tetap disabled karena sudah masuk proses login
                             }
                         } else {
                             Toast.makeText(this, "Data default user belum lengkap", Toast.LENGTH_LONG).show();
+                            resetAutoConnectButton();
                         }
                     } else {
                         Toast.makeText(this, "Dokumen public_guest tidak ditemukan", Toast.LENGTH_SHORT).show();
+                        resetAutoConnectButton();
                     }
                 })
-                .addOnFailureListener(e -> 
-                    Toast.makeText(this, "Gagal ambil data: " + e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "❌ Gagal ambil data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    resetAutoConnectButton();
+                });
         });
+    }
+
+    // Helper untuk mengembalikan tombol ke kondisi semula
+    private void resetAutoConnectButton() {
+        if (btnAutoConnect != null) {
+            btnAutoConnect.setText("KONEK OTOMATIS (FIREBASE)");
+            btnAutoConnect.setEnabled(true);
+            btnAutoConnect.setAlpha(1.0f);
+        }
     }
 
     private void initializeViews() {
@@ -301,7 +326,11 @@ public class ServerListActivity extends AppCompatActivity
 
                 if (!getService().reconnect()) {
                     showToast(getString(R.string.err_connection));
+                    resetAutoConnectButton(); // Reset tombol jika gagal reconnect
                 }
+            } else {
+                // Jika tidak ada server entry, pastikan tombol aktif kembali
+                resetAutoConnectButton();
             }
         }
     }
@@ -890,7 +919,11 @@ public class ServerListActivity extends AppCompatActivity
 
             if (!service.reconnect()) {
                 showToast(getString(R.string.err_connection));
+                resetAutoConnectButton(); // Reset tombol jika gagal reconnect saat service connected
             }
+        } else {
+            // Jika tidak ada server entry yang tersimpan, pastikan tombol aktif
+            resetAutoConnectButton();
         }
 
         refreshServerList();
