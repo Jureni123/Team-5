@@ -4,11 +4,13 @@ package dk.bearware.gui;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -21,6 +23,11 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class SplashActivity extends AppCompatActivity {
     private static final int RC_SIGN_IN = 9001;
@@ -129,6 +136,9 @@ public class SplashActivity extends AppCompatActivity {
                 if (idToken == null || idToken.isEmpty()) {
                     if (tvStatus != null) tvStatus.setText("✅ Login berhasil! Mengalihkan...");
                     Toast.makeText(this, "Login berhasil!", Toast.LENGTH_SHORT).show();
+                    
+                    // Simpan profil meski tanpa ID Token (jika user sudah pernah login sebelumnya)
+                    savePhotoUrlToFirestore(); 
                     goToServerList();
                     return;
                 }
@@ -157,7 +167,10 @@ public class SplashActivity extends AppCompatActivity {
                         if (tvStatus != null) tvStatus.setText("✅ Login berhasil! (" + email + ")");
                         Toast.makeText(this, "Login berhasil! Selamat datang.", Toast.LENGTH_SHORT).show();
 
-                        // ✅ PINDAH KE ServerListActivity (BUKAN MainActivity!)
+                        // ✅ SIMPAN URL FOTO PROFIL KE FIRESTORE
+                        savePhotoUrlToFirestore();
+
+                        // ✅ PINDAH KE ServerListActivity
                         goToServerList();
 
                     } else {
@@ -167,12 +180,46 @@ public class SplashActivity extends AppCompatActivity {
                             errorMsg = task.getException().getMessage();
                         }
 
-                        if (tvStatus != null) tvStatus.setText("❌ " + errorMsg);
+                        if (tvStatus != null) tvStatus.setText(" " + errorMsg);
                         Toast.makeText(this, "Login gagal: " + errorMsg, Toast.LENGTH_LONG).show();
 
                         if (progressBar != null) progressBar.setVisibility(View.GONE);
                     }
                 });
+    }
+
+    /**
+     * ✅ FUNGSI BARU: MENYIMPAN URL FOTO PROFIL KE FIRESTORE
+     */
+    private void savePhotoUrlToFirestore() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        
+        if (currentUser != null) {
+            String uid = currentUser.getUid(); // ID unik user dari Firebase Auth
+            String photoUrl = "";
+            
+            // Ambil URL foto, jika tidak ada pakai string kosong
+            if (currentUser.getPhotoUrl() != null) {
+                photoUrl = currentUser.getPhotoUrl().toString();
+            }
+
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+            
+            // Siapkan data yang akan disimpan
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("foto_profil_url", photoUrl);
+            
+            // Update dokumen user di collection 'pengguna'
+            // Menggunakan SetOptions.merge() agar field lain (seperti kata sandi teamtalk) tidak terhapus
+            db.collection("pengguna").document(uid)
+              .set(updates, SetOptions.merge())
+              .addOnSuccessListener(aVoid -> {
+                  Log.d(TAG, "URL Foto berhasil disimpan untuk UID: " + uid);
+              })
+              .addOnFailureListener(e -> {
+                  Log.e(TAG, "Gagal simpan URL foto", e);
+              });
+        }
     }
 
     /**
