@@ -234,7 +234,7 @@ public class ServerListActivity extends AppCompatActivity
                                 showToast(getString(R.string.err_connection));
                                 resetAutoConnectButton(); // Reset tombol jika gagal konek
                             } else {
-                                showToast("✅ Berhasil terhubung sebagai " + googleName + "...");
+                                showToast("✅  Terhubung " + googleName + "...");
                                 // Biarkan tombol tetap disabled karena sudah masuk proses login
                             }
                         } else {
