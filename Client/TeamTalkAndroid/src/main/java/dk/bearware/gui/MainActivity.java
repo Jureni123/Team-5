@@ -1,26 +1,11 @@
+/*/*
+ * Copyright (c) 2005-2018, BearWare.dk
+ * modif by jureni 123 
+ */
 /*
  * Copyright (c) 2005-2018, BearWare.dk
- * 
- * Contact Information:
- *
- * Bjoern D. Rasmussen
- * Kirketoften 5
- * DK-8260 Viby J
- * Denmark
- * Email: contact@bearware.dk
- * Phone: +45 20 20 54 59
- * Web: http://www.bearware.dk
- *
- * This source code is part of the TeamTalk SDK owned by
- * BearWare.dk. Use of this file, or its compiled unit, requires a
- * TeamTalk SDK License Key issued by BearWare.dk.
- *
- * The TeamTalk SDK License Agreement along with its Terms and
- * Conditions are outlined in the file License.txt included with the
- * TeamTalk SDK distribution.
- *
+ * modif by jureni 123 
  */
-
 package dk.bearware.gui;
 
 import android.app.Activity;
@@ -81,7 +66,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.OptIn;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
@@ -92,21 +76,23 @@ import androidx.fragment.app.ListFragment;
 import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.material.tabs.TabLayout;
-
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.bumptech.glide.Glide;
+
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.Vector;
 
 import dk.bearware.Channel;
@@ -149,55 +135,33 @@ import dk.bearware.data.TextMessageAdapter;
 import dk.bearware.events.ClientEventListener;
 import dk.bearware.utils.PrefsHelper;
 
-public class MainActivity
-extends AppCompatActivity
-        implements TeamTalkConnectionListener,
-        OnMenuItemClickListener,
-        SensorEventListener,
-        OnVoiceTransmissionToggleListener,
-        ClientEventListener.OnConnectionLostListener,
-        ClientEventListener.OnCmdProcessingListener,
-        ClientEventListener.OnCmdMyselfLoggedInListener,
-        ClientEventListener.OnCmdMyselfLoggedOutListener,
-        ClientEventListener.OnCmdMyselfKickedFromChannelListener,
-        ClientEventListener.OnCmdUserUpdateListener,
-        ClientEventListener.OnCmdUserLeftChannelListener,
-        ClientEventListener.OnCmdChannelNewListener,
-        ClientEventListener.OnCmdUserTextMessageListener,
-        ClientEventListener.OnCmdUserJoinedChannelListener,
-        ClientEventListener.OnCmdChannelRemoveListener,
-        ClientEventListener.OnCmdChannelUpdateListener,
-        ClientEventListener.OnCmdUserLoggedOutListener,
-        ClientEventListener.OnCmdUserLoggedInListener,
-        ClientEventListener.OnCmdFileRemoveListener,
-        ClientEventListener.OnUserStateChangeListener,
-        ClientEventListener.OnVoiceActivationListener,
+public class MainActivity extends AppCompatActivity
+        implements TeamTalkConnectionListener, OnMenuItemClickListener, SensorEventListener,
+        OnVoiceTransmissionToggleListener, ClientEventListener.OnConnectionLostListener,
+        ClientEventListener.OnCmdProcessingListener, ClientEventListener.OnCmdMyselfLoggedInListener,
+        ClientEventListener.OnCmdMyselfLoggedOutListener, ClientEventListener.OnCmdMyselfKickedFromChannelListener,
+        ClientEventListener.OnCmdUserUpdateListener, ClientEventListener.OnCmdUserLeftChannelListener,
+        ClientEventListener.OnCmdChannelNewListener, ClientEventListener.OnCmdUserTextMessageListener,
+        ClientEventListener.OnCmdUserJoinedChannelListener, ClientEventListener.OnCmdChannelRemoveListener,
+        ClientEventListener.OnCmdChannelUpdateListener, ClientEventListener.OnCmdUserLoggedOutListener,
+        ClientEventListener.OnCmdUserLoggedInListener, ClientEventListener.OnCmdFileRemoveListener,
+        ClientEventListener.OnUserStateChangeListener, ClientEventListener.OnVoiceActivationListener,
         ClientEventListener.OnCmdFileNewListener {
 
     SectionsPagerAdapter mSectionsPagerAdapter;
-
-    /**
-     * The {@link ViewPager} that will host the section contents.
-     */
     ViewPager mViewPager;
     TabLayout mTabLayout;
 
     public static final String TAG = "bearware";
     private static final String MSG_NOTIFICATION_CHANNEL_ID = "TT_PM";
 
-    public final int REQUEST_EDITCHANNEL = 1,
-                     REQUEST_NEWCHANNEL = 2,
-                     REQUEST_EDITUSER = 3,
-                     REQUEST_SELECT_FILE = 4;
+    public final int REQUEST_EDITCHANNEL = 1, REQUEST_NEWCHANNEL = 2,
+                     REQUEST_EDITUSER = 3, REQUEST_SELECT_FILE = 4;
 
     CountDownTimer stats_timer = null;
     TeamTalkConnection mConnection;
-
-    // The channel currently being displayed
     Channel curchannel;
-    // The channel we're currently in
     Channel mychannel;
-
     SparseArray<CmdComplete> activecmds = new SparseArray<>();
 
     ChannelListAdapter channelsAdapter;
@@ -217,67 +181,76 @@ extends AppCompatActivity
     boolean isProximitySensorRegistered = false;
     Map<Integer, User> users = new HashMap<>();
 
-    static final String MESSAGE_NOTIFICATION_TAG = "incoming_message";
+    // === SISTEM CACHE AVATAR OPTIMIZED ===
+    private static class AvatarData {
+        String url;
+        long fetchedAt;
+        AvatarData(String url, long fetchedAt) {
+            this.url = url;
+            this.fetchedAt = fetchedAt;
+        }
+    }
+    private final Map<Integer, AvatarData> avatarCache = new HashMap<>();
+    private static final long AVATAR_CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 Menit
+    private final Set<Integer> pendingAvatarRequests = new HashSet<>();
+    // =====================================
 
-    final int SOUND_VOICETXON = 1,
-              SOUND_VOICETXOFF = 2,
-              SOUND_USERMSG = 3,
-              SOUND_CHANMSG = 4,
-              SOUND_BCASTMSG = 5,
-              SOUND_SERVERLOST = 6,
-              SOUND_FILESUPDATE = 7,
-              SOUND_VOXENABLE = 8,
-              SOUND_VOXDISABLE = 9,
-              SOUND_VOXON = 10,
-              SOUND_VOXOFF = 11,
-              SOUND_TXREADY = 12,
-              SOUND_TXSTOP = 13,
-              SOUND_USERJOIN = 14,
-              SOUND_USERLEFT = 15,
-              SOUND_USERLOGGEDIN = 16,
-              SOUND_USERLOGGEDOFF = 17,
-              SOUND_INTERCEPTON = 18,
-              SOUND_INTERCEPTOFF = 19,
-              SOUND_TYPING = 20,
-              SOUND_CHANMSGSENT = 21;
+    static final String MESSAGE_NOTIFICATION_TAG = "incoming_message";
+    final int SOUND_VOICETXON = 1, SOUND_VOICETXOFF = 2, SOUND_USERMSG = 3,
+              SOUND_CHANMSG = 4, SOUND_BCASTMSG = 5, SOUND_SERVERLOST = 6,
+              SOUND_FILESUPDATE = 7, SOUND_VOXENABLE = 8, SOUND_VOXDISABLE = 9,
+              SOUND_VOXON = 10, SOUND_VOXOFF = 11, SOUND_TXREADY = 12,
+              SOUND_TXSTOP = 13, SOUND_USERJOIN = 14, SOUND_USERLEFT = 15,
+              SOUND_USERLOGGEDIN = 16, SOUND_USERLOGGEDOFF = 17,
+              SOUND_INTERCEPTON = 18, SOUND_INTERCEPTOFF = 19,
+              SOUND_TYPING = 20, SOUND_CHANMSGSENT = 21;
     
     SparseIntArray sounds = new SparseIntArray();
-
     private Context ctx;
     private PrefsHelper prefs;
 
-    public ChannelListAdapter getChannelsAdapter() {
-        return channelsAdapter;
+    // === METHOD UNTUK MENYIMPAN PROFIL USER KE FIRESTORE ===
+    private void saveUserProfileToFirestore(FirebaseUser firebaseUser) {
+        if (firebaseUser == null) return;
+        
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        Map<String, Object> userProfile = new HashMap<>();
+        userProfile.put("uid", firebaseUser.getUid());
+        userProfile.put("displayName", firebaseUser.getDisplayName() != null ? 
+                        firebaseUser.getDisplayName() : "Unknown");
+        userProfile.put("email", firebaseUser.getEmail());
+        userProfile.put("foto_profil_url", firebaseUser.getPhotoUrl() != null ? 
+                         firebaseUser.getPhotoUrl().toString() : "");
+        userProfile.put("lastLogin", System.currentTimeMillis());
+        
+        // Simpan dengan document ID = uid user
+        db.collection("users")
+          .document(firebaseUser.getUid())
+          .set(userProfile)
+          .addOnSuccessListener(aVoid -> Log.d(TAG, "User profile saved successfully"))
+          .addOnFailureListener(e -> Log.e(TAG, "Error saving user profile", e));
     }
-    
-    public FileListAdapter getFilesAdapter() {
-        return filesAdapter;
-    }
+    // === AKHIR METHOD SAVE PROFILE ===
 
-    public TextMessageAdapter getTextMessagesAdapter() {
-        return textmsgAdapter;
-    }
-    
-    public MediaAdapter getMediaAdapter() {
-        return mediaAdapter;
-    }
+    public ChannelListAdapter getChannelsAdapter() { return channelsAdapter; }
+    public FileListAdapter getFilesAdapter() { return filesAdapter; }
+    public TextMessageAdapter getTextMessagesAdapter() { return textmsgAdapter; }
+    public MediaAdapter getMediaAdapter() { return mediaAdapter; }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ctx = getApplicationContext();
         prefs = new PrefsHelper(ctx);
-
         mConnection = new TeamTalkConnection(this);
         setContentView(R.layout.activity_main);
         EdgeToEdgeHelper.enableEdgeToEdge(this);
 
         String serverName = getIntent().getStringExtra(ServerEntry.KEY_SERVERNAME);
-        if ((serverName != null) && !serverName.isEmpty())
-            setTitle(serverName);
+        if ((serverName != null) && !serverName.isEmpty()) setTitle(serverName);
+        
         ActionBar ab = getSupportActionBar();
-        if (ab != null)
-            ab.setDisplayHomeAsUpEnabled(true);
+        if (ab != null) ab.setDisplayHomeAsUpEnabled(true);
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
@@ -285,8 +258,11 @@ extends AppCompatActivity
         accessibilityAssistant = new AccessibilityAssistant(this);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG + ":TeamTalk5");
-        proximityWakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, TAG + ":TeamTalk5");
+        
+        wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE))
+                   .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG + ":TeamTalk5");
+        proximityWakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE))
+                            .newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, TAG + ":TeamTalk5");
         wakeLock.setReferenceCounted(false);
         proximityWakeLock.setReferenceCounted(false);
 
@@ -295,29 +271,24 @@ extends AppCompatActivity
         textmsgAdapter = new TextMessageAdapter(this, accessibilityAssistant);
         mediaAdapter = new MediaAdapter(this.getBaseContext());
         
-        // Create the adapter that will return a fragment for each of the five
-        // primary sections of the app.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
         mTabLayout = findViewById(R.id.tab_layout);
-
-        // Set up the ViewPager with the sections adapter.
         mViewPager = findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
         mViewPager.addOnPageChangeListener(mSectionsPagerAdapter);
         mTabLayout.setupWithViewPager(mViewPager);
-
         setupButtons();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            final MediaPlayer mMediaPlayer;
-            mMediaPlayer = MediaPlayer.create(ctx, R.raw.silence);
-            mMediaPlayer.setOnCompletionListener(mediaPlayer -> mMediaPlayer.release());
+            final MediaPlayer mMediaPlayer = MediaPlayer.create(ctx, R.raw.silence);
+            mMediaPlayer.setOnCompletionListener(mp -> mp.release());
             mMediaPlayer.start();
         }
     }
 
+//=============
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(Menu ) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
@@ -787,7 +758,9 @@ extends AppCompatActivity
 
     }
 
-
+ //========== BAGIAN 1=======
+ 
+//==========BAGIAN 2========"
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
@@ -1427,35 +1400,78 @@ private EditText newmsg;
                         icon_resource = away ? R.drawable.man_orange : R.drawable.man_blue; // male or neutral
                     }
                 }
+//=============BATAS BAGIAN 2====""
 
+
+//===========
+
+//======BAGIAN 3===""==
                 status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
-// === START FIX PHOTO PROFILE ===
-                FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-                String firebaseUid = (firebaseUser != null) ? firebaseUser.getUid() : null;
 
-                if (firebaseUid != null && user.nUserID == getService().getTTInstance().getMyUserID()) {
-                    FirebaseFirestore db = FirebaseFirestore.getInstance();
-                    db.collection("pengguna").document(firebaseUid).get()
-                      .addOnSuccessListener(doc -> {
-                          if (doc != null && doc.exists()) {
-                              String url = doc.getString("foto_profil_url");
-                              if (url != null && !url.isEmpty()) {
-                                  Glide.with(MainActivity.this).load(url).circleCrop()
-                                       .placeholder(icon_resource).error(icon_resource).into(usericon);
-                                  return; 
-                              }
-                          }
-                          usericon.setImageResource(icon_resource);
-                      })
-                      .addOnFailureListener(e -> {
-                          Log.e(TAG, "Gagal ambil foto: " + e.getMessage());
-                          usericon.setImageResource(icon_resource);
-                      });
+                // === MODIFIKASI FOTO PROFIL OPTIMIZED (CACHE + FIREBASE DIRECT ID) ===
+         // === MODIFIKASI FOTO PROFIL OPTIMIZED ===
+                int ttUserId = user.nUserID;
+                
+                // Cek apakah ini diri sendiri atau orang lain
+                boolean isMyself = (ttUserId == getService().getTTInstance().getMyUserID());
+                
+                if (isMyself) {
+                    // DIRI SENDIRI: Ambil langsung dari Firebase Auth
+                    FirebaseUser fbUser = FirebaseAuth.getInstance().getCurrentUser();
+                    if (fbUser != null && fbUser.getPhotoUrl() != null) {
+                        Glide.with(MainActivity.this)
+                             .load(fbUser.getPhotoUrl())
+                             .circleCrop()
+                             .placeholder(icon_resource)
+                             .error(icon_resource)
+                             .into(usericon);
+                    } else {
+                        usericon.setImageResource(icon_resource);
+                    }
                 } else {
-                    usericon.setImageResource(icon_resource);
+                    // ORANG LAIN: Query Firestore collection "users"
+                    String userIdStr = String.valueOf(ttUserId);
+                    
+                    FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .whereEqualTo("uid", userIdStr)
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener(querySnapshot -> {
+                            // Pastikan view masih valid & user masih sama
+                            if (!querySnapshot.isEmpty() && 
+                                usericon.getTag() != null && 
+                                usericon.getTag().equals(ttUserId)) {
+                                
+                                for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                                    String url = doc.getString("foto_profil_url");
+                                    if (url != null && !url.isEmpty()) {
+                                        Glide.with(MainActivity.this)
+                                             .load(url)
+                                             .circleCrop()
+                                             .placeholder(icon_resource)
+                                             .error(icon_resource)
+                                             .into(usericon);
+                                        return;
+                                    }
+                                }
+                            }
+                            // Fallback jika tidak ada foto
+                            usericon.setImageResource(icon_resource);
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.e(TAG, "Gagal load avatar user " + ttUserId + ": " + e.getMessage());
+                            usericon.setImageResource(icon_resource);
+                        });
+                    
+                    // Set tag pada ImageView untuk validasi
+                    usericon.setTag(ttUserId);
                 }
-                // === END FIX PHOTO PROFILE ===
-
+                // === AKHIR MODIFIKASI FOTO PROFIL ===
+                
+                ///usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                // === AKHIR MODIFIKASI FOTO PROFIL ===
+                
                 usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 
                 Button sndmsg = convertView.findViewById(R.id.msg_btn);
@@ -1937,7 +1953,9 @@ private EditText newmsg;
             }
         });
     }
-
+    //=======BATAS BAGIAN 3==
+    
+///BAGIIAN 4========
     private void initializeTeamTalkService(TeamTalkService service) {
 
         this.users = new HashMap<>(service.getUsers());
@@ -2112,10 +2130,16 @@ private EditText newmsg;
         }
     }
 
-    @Override
-    public void onCmdMyselfLoggedIn(int my_userid, UserAccount useraccount) {
-        textmsgAdapter.setMyUserID(my_userid);
+@Override
+public void onCmdMyselfLoggedIn(int my_userid, UserAccount useraccount) {
+    textmsgAdapter.setMyUserID(my_userid);
+    
+    // Simpan profil ke Firestore setelah login berhasil
+    FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+    if (currentUser != null) {
+        saveUserProfileToFirestore(currentUser);
     }
+}
 
     @Override
     public void onCmdMyselfLoggedOut() {
