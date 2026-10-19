@@ -234,7 +234,7 @@ public class MainActivity extends AppCompatActivity
         wakeLock.setReferenceCounted(false);
         proximityWakeLock.setReferenceCounted(false);
 
-        // ️ ADAPTER DI-CREATE DISINI TAPI BELUM DI-INISIALISASI LENGKAP KARENA SERVICE BELUM READY
+        // ⚠️ ADAPTER TIDAK DI-INISIALISASI DI SINI KARENA SERVICE BELUM READY!
         // Kita init lengkapnya nanti di initializeTeamTalkService()
         
         filesAdapter = new FileListAdapter(this, this, accessibilityAssistant);
@@ -804,6 +804,7 @@ public class MainActivity extends AppCompatActivity
             View rootView = inflater.inflate(R.layout.fragment_main_channels, container, false);
             mainActivity.accessibilityAssistant.registerPage(rootView, SectionsPagerAdapter.CHANNELS_PAGE);
             ListView channelsList = rootView.findViewById(R.id.listChannels);
+            // ✅ NULL CHECK BIAR GAK CRASH SAAT ADAPTER BELUM SIAP
             if(mainActivity.getChannelsAdapter() != null) {
                 channelsList.setAdapter(mainActivity.getChannelsAdapter());
             }
