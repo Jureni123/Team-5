@@ -1426,6 +1426,35 @@ private EditText newmsg;
 
                 status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
 
+// ✅ LOG: Cek apakah masuk ke blok User
+                Log.d("bearware", "Rendering user: " + user.szNickname); 
+
+                String uid = String.valueOf(user.nUserID);
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                
+                Log.d("bearware", "Fetching photo for UID: " + uid); // ✅ LOG: Cek UID
+
+                db.collection("pengguna").document(uid).get()
+                  .addOnSuccessListener(doc -> {
+                      if (doc != null && doc.exists()) {
+                          String url = doc.getString("foto_profil_url");
+                          Log.d("bearware", "Photo URL found: " + url); // ✅ LOG: Cek URL dari Firebase
+                          
+                          if (url != null && !url.isEmpty()) {
+                              Glide.with(MainActivity.this).load(url).circleCrop()
+                                   .placeholder(icon_resource).error(icon_resource).into(usericon);
+                              Log.d("bearware", "Glide loading started for: " + user.szNickname); // ✅ LOG: Cek Glide jalan
+                              return; 
+                          }
+                      }
+                      Log.d("bearware", "No photo URL, using default icon for: " + user.szNickname); // ✅ LOG: Fallback icon
+                      usericon.setImageResource(icon_resource);
+                  })
+                  .addOnFailureListener(e -> {
+                      Log.e("bearware", "Firebase fetch failed: " + e.getMessage()); // ❌ LOG: Kalau error Firebase
+                      usericon.setImageResource(icon_resource);
+                  });
+
                 usericon.setImageResource(icon_resource);
                 usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 
