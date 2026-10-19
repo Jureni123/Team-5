@@ -1429,8 +1429,7 @@ private EditText newmsg;
                 }
 
                 status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
-// --- KODE BARU PENAMPIL FOTO PROFIL (STEP 1) ---
-      // --- TAMBAHAN KODE FOTO PROFIL ---
+// === START FIX PHOTO PROFILE ===
                 FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
                 String firebaseUid = (firebaseUser != null) ? firebaseUser.getUid() : null;
 
@@ -1455,12 +1454,29 @@ private EditText newmsg;
                 } else {
                     usericon.setImageResource(icon_resource);
                 }
-                // --- SELESAI TAMBAHAN ---
+                // === END FIX PHOTO PROFILE ===
 
                 usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 
-                Button sndmsg = convertView.findViewById(R.id.msg_btn); 
-    
+                Button sndmsg = convertView.findViewById(R.id.msg_btn);
+                OnClickListener listener = v -> {
+                    if (v.getId() == R.id.msg_btn) {
+                        Intent intent = new Intent(MainActivity.this, TextMessageActivity.class);
+                        startActivity(intent.putExtra(TextMessageActivity.EXTRA_USERID, user.nUserID));
+                    }
+                };
+                sndmsg.setOnClickListener(listener);
+                sndmsg.setAccessibilityDelegate(accessibilityAssistant);
+            } 
+            
+            final Object rowItem = item;
+            convertView.setOnClickListener(view -> onChannelItemClick(rowItem));
+            convertView.setOnLongClickListener(view -> onChannelItemLongClick(rowItem, view));
+            convertView.setAccessibilityDelegate(accessibilityAssistant);
+            return convertView;
+        } 
+    } 
+
     void createStatusTimer() {
         
         final TextView connection = findViewById(R.id.connectionstat_textview);
