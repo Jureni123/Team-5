@@ -92,8 +92,11 @@ import androidx.fragment.app.ListFragment;
 import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.material.tabs.TabLayout;
-import com.bumptech.glide.Glide;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.bumptech.glide.Glide;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -1426,57 +1429,48 @@ private EditText newmsg;
                 }
 
                 status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
-
-// ✅ LOG: Cek apakah masuk ke blok User
-                Log.d("bearware", "Rendering user: " + user.szNickname); 
-
-                String uid = String.valueOf(user.nUserID);
-                FirebaseFirestore db = FirebaseFirestore.getInstance();
+// --- KODE BARU PENAMPIL FOTO PROFIL (STEP 1) ---
                 
-                Log.d("bearware", "Fetching photo for UID: " + uid); // ✅ LOG: Cek UID
+                // 1. Ambil UID dari Firebase Auth (bukan ID TeamTalk)
+                FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+                String firebaseUid = (firebaseUser != null) ? firebaseUser.getUid() : null;
 
-                db.collection("pengguna").document(uid).get()
-                  .addOnSuccessListener(doc -> {
-                      if (doc != null && doc.exists()) {
-                          String url = doc.getString("foto_profil_url");
-                          Log.d("bearware", "Photo URL found: " + url); // ✅ LOG: Cek URL dari Firebase
-                          
-                          if (url != null && !url.isEmpty()) {
-                              Glide.with(MainActivity.this).load(url).circleCrop()
-                                   .placeholder(icon_resource).error(icon_resource).into(usericon);
-                              Log.d("bearware", "Glide loading started for: " + user.szNickname); // ✅ LOG: Cek Glide jalan
-                              return; 
+                // 2. Hanya tampilkan foto jika user yang dirender adalah DIRI SENDIRI
+                if (firebaseUid != null && user.nUserID == getService().getTTInstance().getMyUserID()) {
+                    
+                    FirebaseFirestore db = FirebaseFirestore.getInstance();
+                    
+                    // 3. Cari dokumen di collection 'pengguna' dengan ID = UID Gmail
+                    db.collection("pengguna").document(firebaseUid).get()
+                      .addOnSuccessListener(doc -> {
+                          if (doc != null && doc.exists()) {
+                              String url = doc.getString("foto_profil_url");
+                              
+                              if (url != null && !url.isEmpty()) {
+                                  // 4. Tampilkan Foto Profil Gmail!
+                                  Glide.with(MainActivity.this)
+                                       .load(url)
+                                       .circleCrop()
+                                       .placeholder(icon_resource)
+                                       .error(icon_resource)
+                                       .into(usericon);
+                                  return; 
+                              }
                           }
-                      }
-                      Log.d("bearware", "No photo URL, using default icon for: " + user.szNickname); // ✅ LOG: Fallback icon
-                      usericon.setImageResource(icon_resource);
-                  })
-                  .addOnFailureListener(e -> {
-                      Log.e("bearware", "Firebase fetch failed: " + e.getMessage()); // ❌ LOG: Kalau error Firebase
-                      usericon.setImageResource(icon_resource);
-                  });
+                          // Fallback jika data tidak ditemukan
+                          usericon.setImageResource(icon_resource);
+                      })
+                      .addOnFailureListener(e -> {
+                          Log.e(TAG, "Gagal ambil foto profil: " + e.getMessage());
+                          usericon.setImageResource(icon_resource);
+                      });
+                      
+                } else {
+                    // Untuk user ORANG LAIN atau jika belum login Gmail, tampilkan icon default
+                    usericon.setImageResource(icon_resource);
+                }
 
-                usericon.setImageResource(icon_resource);
-                usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-                
-                Button sndmsg = convertView.findViewById(R.id.msg_btn);
-                OnClickListener listener = v -> {
-                    if (v.getId() == R.id.msg_btn) {
-                        Intent intent = new Intent(MainActivity.this, TextMessageActivity.class);
-                        startActivity(intent.putExtra(TextMessageActivity.EXTRA_USERID, user.nUserID));
-                    }
-                };
-                sndmsg.setOnClickListener(listener);
-                sndmsg.setAccessibilityDelegate(accessibilityAssistant);
-            }
-            final Object rowItem = item;
-            convertView.setOnClickListener(view -> onChannelItemClick(rowItem));
-            convertView.setOnLongClickListener(view -> onChannelItemLongClick(rowItem, view));
-
-            convertView.setAccessibilityDelegate(accessibilityAssistant);
-            return convertView;
-        }
-    }
+                // --- AKHIR KODE STEP 1 ---
     
     void createStatusTimer() {
         
