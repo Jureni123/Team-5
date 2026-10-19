@@ -1,4 +1,4 @@
-name: TeamTalk5 Android Build (Public + Commit Tracking)
+name: TeamTalk5 Android Build (memisah ch adapter dan mainActivity)
 
 on:
   workflow_dispatch:
