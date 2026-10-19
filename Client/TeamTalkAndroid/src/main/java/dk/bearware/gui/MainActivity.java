@@ -1430,47 +1430,36 @@ private EditText newmsg;
 
                 status.setContentDescription(away ? getString(R.string.user_state_away) + " " + user.szStatusMsg : null);
 // --- KODE BARU PENAMPIL FOTO PROFIL (STEP 1) ---
-                
-                // 1. Ambil UID dari Firebase Auth (bukan ID TeamTalk)
+      // --- TAMBAHAN KODE FOTO PROFIL ---
                 FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
                 String firebaseUid = (firebaseUser != null) ? firebaseUser.getUid() : null;
 
-                // 2. Hanya tampilkan foto jika user yang dirender adalah DIRI SENDIRI
                 if (firebaseUid != null && user.nUserID == getService().getTTInstance().getMyUserID()) {
-                    
                     FirebaseFirestore db = FirebaseFirestore.getInstance();
-                    
-                    // 3. Cari dokumen di collection 'pengguna' dengan ID = UID Gmail
                     db.collection("pengguna").document(firebaseUid).get()
                       .addOnSuccessListener(doc -> {
                           if (doc != null && doc.exists()) {
                               String url = doc.getString("foto_profil_url");
-                              
                               if (url != null && !url.isEmpty()) {
-                                  // 4. Tampilkan Foto Profil Gmail!
-                                  Glide.with(MainActivity.this)
-                                       .load(url)
-                                       .circleCrop()
-                                       .placeholder(icon_resource)
-                                       .error(icon_resource)
-                                       .into(usericon);
+                                  Glide.with(MainActivity.this).load(url).circleCrop()
+                                       .placeholder(icon_resource).error(icon_resource).into(usericon);
                                   return; 
                               }
                           }
-                          // Fallback jika data tidak ditemukan
                           usericon.setImageResource(icon_resource);
                       })
                       .addOnFailureListener(e -> {
-                          Log.e(TAG, "Gagal ambil foto profil: " + e.getMessage());
+                          Log.e(TAG, "Gagal ambil foto: " + e.getMessage());
                           usericon.setImageResource(icon_resource);
                       });
-                      
                 } else {
-                    // Untuk user ORANG LAIN atau jika belum login Gmail, tampilkan icon default
                     usericon.setImageResource(icon_resource);
                 }
+                // --- SELESAI TAMBAHAN ---
 
-                // --- AKHIR KODE STEP 1 ---
+                usericon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                
+                Button sndmsg = convertView.findViewById(R.id.msg_btn); 
     
     void createStatusTimer() {
         
