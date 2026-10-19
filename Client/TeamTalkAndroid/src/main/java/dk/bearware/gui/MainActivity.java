@@ -1131,18 +1131,25 @@ public class MainActivity extends AppCompatActivity
 
     private interface OnButtonInteractionListener extends OnTouchListener, OnClickListener {}
 
-    private void setupButtons() {
+private void setupButtons() {
         final Button tx_btn = findViewById(R.id.transmit_voice);
         tx_btn.setAccessibilityDelegate(accessibilityAssistant);
+
         OnButtonInteractionListener txButtonListener = new OnButtonInteractionListener() {
-            boolean tx_state = false; long tx_down_start = 0;
+            boolean tx_state = false;
+            long tx_down_start = 0;
+
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 boolean tx = event.getAction() != MotionEvent.ACTION_UP;
-                if(tx != tx_state) {
-                    if(!tx) {
-                        if(System.currentTimeMillis() - tx_down_start < 800) { tx = true; tx_down_start = 0; }
-                        else tx_down_start = System.currentTimeMillis();
+                if (tx != tx_state) {
+                    if (!tx) {
+                        if (System.currentTimeMillis() - tx_down_start < 800) {
+                            tx = true;
+                            tx_down_start = 0;
+                        } else {
+                            tx_down_start = System.currentTimeMillis();
+                        }
                     }
                     if (getService().isVoiceActivationEnabled()) getService().enableVoiceActivation(false);
                     getService().enableVoiceTransmission(tx);
@@ -1150,21 +1157,29 @@ public class MainActivity extends AppCompatActivity
                 tx_state = tx;
                 return true;
             }
+
             @Override
             public void onClick(View v) {
-                if(System.currentTimeMillis() - tx_down_start < 800) { tx_state = true; tx_down_start = 0; }
-                else { tx_state = false; tx_down_start = System.currentTimeMillis(); }
+                if (System.currentTimeMillis() - tx_down_start < 800) {
+                    tx_state = true;
+                    tx_down_start = 0;
+                } else {
+                    tx_state = false;
+                    tx_down_start = System.currentTimeMillis();
+                }
                 if (getService().isVoiceActivationEnabled()) getService().enableVoiceActivation(false);
                 getService().enableVoiceTransmission(tx_state);
             }
         };
+
         tx_btn.setOnTouchListener(txButtonListener);
         
         final SeekBar masterSeekBar = findViewById(R.id.master_volSeekBar);
         final SeekBar micSeekBar = findViewById(R.id.mic_gainSeekBar);
         final TextView micLevel = findViewById(R.id.miclevel_text);
         final TextView volLevel = findViewById(R.id.vollevel_text);
-        masterSeekBar.setMax(100); micSeekBar.setMax(100);
+        masterSeekBar.setMax(100);
+        micSeekBar.setMax(100);
 
         SeekBar.OnSeekBarChangeListener volListener = new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -1197,10 +1212,13 @@ public class MainActivity extends AppCompatActivity
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         };
+
         masterSeekBar.setOnSeekBarChangeListener(volListener);
         micSeekBar.setOnSeekBarChangeListener(volListener);
 
-        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) && accessibilityAssistant.isServiceActive()) tx_btn.setOnClickListener(txButtonListener);
+        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) && accessibilityAssistant.isServiceActive()) {
+            tx_btn.setOnClickListener(txButtonListener);
+        }
 
         ImageButton speakerBtn = findViewById(R.id.speakerBtn);
         speakerBtn.setOnClickListener(v -> {
@@ -1222,7 +1240,6 @@ public class MainActivity extends AppCompatActivity
             }
         });
     }
-
     private void initializeTeamTalkService(TeamTalkService service) {
         this.users = new HashMap<>(service.getUsers());
         
