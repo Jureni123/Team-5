@@ -94,6 +94,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
+import java.util.List;
 
 import dk.bearware.Channel;
 import dk.bearware.ChannelType;
@@ -287,7 +288,8 @@ public class MainActivity extends AppCompatActivity
     }
 
 //=============
-    @Overridepublic boolean onCreateOptionsMenu(Menu menu) {
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
             // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
