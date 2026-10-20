@@ -1434,9 +1434,8 @@ private EditText newmsg;
                     String userIdStr = String.valueOf(ttUserId);
                     
                     FirebaseFirestore.getInstance()
-                        .collection("users")
-                        .whereEqualTo("uid", userIdStr)
-                        .limit(1)
+                        .collection("pengguna")
+.whereEqualTo("teamtalk_id", ttUserId)
                         .get()
                         .addOnSuccessListener(querySnapshot -> {
                             // Pastikan view masih valid & user masih sama
@@ -2135,13 +2134,47 @@ private EditText newmsg;
 public void onCmdMyselfLoggedIn(int my_userid, UserAccount useraccount) {
     textmsgAdapter.setMyUserID(my_userid);
     
-    // Simpan profil ke Firestore setelah login berhasil
+    // === LOGIKA OTOMATIS UPDATE TEAMTALK_ID ===
     FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
     if (currentUser != null) {
-        saveUserProfileToFirestore(currentUser);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        
+        // Cari dokumen user berdasarkan Email (karena email tidak berubah)
+        db.collection("pengguna")
+          .whereEqualTo("email", currentUser.getEmail()) 
+          .limit(1)
+          .get()
+          .addOnSuccessListener(querySnapshot -> {
+              if (!querySnapshot.isEmpty()) {
+                  // Dokumen ketemu! Update teamtalk_id dengan ID TeamTalk terbaru
+                  String docId = querySnapshot.getDocuments().get(0).getId();
+                  
+                  Map<String, Object> updates = new HashMap<>();
+                  updates.put("teamtalk_id", my_userid); // <--- INI KUNCINYA!
+                  updates.put("lastLogin", System.currentTimeMillis());
+                  
+                  db.collection("pengguna").document(docId)
+                    .update(updates)
+                    .addOnSuccessListener(a -> Log.d(TAG, "Auto-update teamtalk_id: " + my_userid))
+                    .addOnFailureListener(e -> Log.e(TAG, "Gagal update: " + e.getMessage()));
+                    
+              } else {
+                  // Jika dokumen belum ada (user baru), buat baru
+                  Map<String, Object> newData = new HashMap<>();
+                  newData.put("foto_profil_url", currentUser.getPhotoUrl() != null ? 
+                               currentUser.getPhotoUrl().toString() : "");
+                  newData.put("email", currentUser.getEmail());
+                  newData.put("teamtalk_id", my_userid);
+                  newData.put("displayName", currentUser.getDisplayName());
+                  
+                  db.collection("pengguna").add(newData)
+                    .addOnSuccessListener(a -> Log.d(TAG, "Dokumen baru dibuat ID: " + my_userid))
+                    .addOnFailureListener(e -> Log.e(TAG, "Gagal buat dokumen: " + e.getMessage()));
+              }
+          });
     }
+    // === AKHIR LOGIKA OTOMATIS ===
 }
-
     @Override
     public void onCmdMyselfLoggedOut() {
         accessibilityAssistant.lockEvents();
