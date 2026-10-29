@@ -2,144 +2,170 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Server K...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Saluran</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-        body { background: #fff; color: #333; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: #ffffff; color: #333; }
 
-        /* ---- HEADER ---- */
-        .header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: #fff; border-bottom: 1px solid #eee; }
-        .header-left, .header-right { display: flex; align-items: center; gap: 12px; }
-        .back-btn { font-size: 20px; color: #333; text-decoration: none; }
-        .header-title { font-size: 18px; font-weight: 600; }
-        .saluran-baru { font-size: 16px; color: #333; font-weight: 500; text-decoration: none; }
-        .menu-dots { font-size: 22px; color: #333; }
+        /* === APP BAR === */
+        .app-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e5e5e5;
+            z-index: 100;
+        }
+        .app-bar-left, .app-bar-right { display: flex; align-items: center; gap: 12px; }
+        .back-btn { font-size: 20px; color: #333; text-decoration: none; cursor: pointer; }
+        .app-bar-title { font-size: 17px; font-weight: 600; }
+        .menu-dots { font-size: 22px; color: #333; cursor: pointer; }
 
-        /* ---- TAB NAVIGASI ---- */
-        .tabs { display: flex; background: #0091EA; }
-        .tab { flex: 1; padding: 12px 0; text-align: center; color: rgba(255,255,255,0.7); font-size: 15px; font-weight: 500; border-bottom: 3px solid transparent; }
-        .tab.active { color: #fff; border-bottom-color: #fff; }
+        /* === AREA DAFTAR SALURAN === */
+        .channel-area {
+            padding-top: 60px;
+            padding-bottom: 70px;
+            min-height: 100vh;
+            background: #f8f9fa;
+            padding-left: 16px;
+            padding-right: 16px;
+        }
 
-        /* ---- STATUS BAR ---- */
-        .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: #f8f9fa; font-size: 14px; border-bottom: 1px solid #eee; }
-        .status-online { color: #28a745; font-weight: 500; }
-        .ping { color: #dc3545; font-weight: 500; }
-        .rx-tx { color: #666; }
+        /* === STATUS BAR === */
+        .status-bar {
+            padding: 6px 16px;
+            background: #f5f5f5;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .online { color: #28a745; font-weight: 500; }
+        .ping { color: #dc3545; }
 
-        /* ---- AREA SALURAN ---- */
-        .channel-banner { background: linear-gradient(135deg, #1E88E5, #0060D1); padding: 40px 20px; text-align: center; color: white; }
-        .play-icon { width: 90px; height: 90px; margin: 0 auto 16px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .play-icon span { font-size: 40px; color: #FF9800; margin-left: 8px; }
-        .channel-name { font-size: 32px; font-weight: 600; }
+        /* === KONTROL BAWAH === */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #ddd;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-        /* ---- DAFTAR PENGGUNA ---- */
-        .user-item { display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #f0f0f0; }
-        .user-avatar { width: 56px; height: 56px; border-radius: 50%; background: #4285F4; color: white; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0; }
-        .user-info { flex: 1; min-width: 0; }
-        .user-name { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
-        .user-status { font-size: 14px; color: #666; line-height: 1.4; }
-        .btn-pesan { padding: 8px 20px; background: #e0e0e0; border: none; border-radius: 4px; font-size: 15px; font-weight: 500; cursor: pointer; }
+        /* KOLOM KIRI */
+        .side-left { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .side-right { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 
-        /* ---- KONTROL BAWAH ---- */
-        .bottom-controls { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #ddd; padding: 12px 16px; }
-        .mic-control { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .mic-icon { font-size: 28px; color: #666; }
-        .mic-slider { width: 48%; height: 6px; -webkit-appearance: none; background: #ddd; border-radius: 3px; outline: none; }
-        .mic-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #4CAF50; border-radius: 50%; cursor: pointer; }
-        
-        .btn-bicara { flex: 1; padding: 14px; background: #dc0000; color: white; border: none; border-radius: 6px; font-size: 20px; font-weight: bold; margin: 0 12px; cursor: pointer; }
-        .speaker-icon { font-size: 28px; color: #666; }
-        .speaker-slider { width: 48%; height: 6px; -webkit-appearance: none; background: #ddd; border-radius: 3px; outline: none; }
-        .speaker-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #2196F3; border-radius: 50%; cursor: pointer; }
+        .control-label { font-size: 11px; color: #666; }
+        .seekbar { width: 90px; height: 5px; -webkit-appearance: none; background: #ddd; border-radius: 3px; outline: none; }
+        .seekbar::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #4285F4; border-radius: 50%; cursor: pointer; }
+        .icon-btn { width: 44px; height: 44px; border-radius: 50%; border: none; background: #e8e8e8; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        .action-buttons { display: flex; gap: 10px; margin-top: 12px; }
-        .action-btn { flex: 1; padding: 10px; border: none; border-radius: 4px; font-size: 15px; font-weight: 500; cursor: pointer; }
-        .btn-foto { background: #039BE5; color: white; }
-        .btn-set { background: #757575; color: white; }
-        .btn-file { background: #757575; color: white; }
+        /* TOMBOL PTT DI TENGAH */
+        .ptt-center { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .ptt-btn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: none;
+            background: #ff3b30;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .ptt-btn:active { background: #cc0000; transform: scale(0.96); }
     </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-    <div class="header-left">
-        <a href="#" class="back-btn" onclick="kembali()">&#8592;</a>
-        <h1 class="header-title">Server K...</h1>
+<!-- === APP BAR === -->
+<div class="app-bar">
+    <div class="app-bar-left">
+        <span class="back-btn" onclick="kembali()">&#8592;</span>
+        <h1 class="app-bar-title" id="server-title">Server K...</h1>
     </div>
-    <div class="header-right">
-        <a href="#" class="saluran-baru">SALURAN BARU</a>
-        <span class="menu-dots">⋮</span>
+    <div class="app-bar-right">
+        <span class="menu-dots" onclick="bukaMenu()">&#8942;</span>
     </div>
 </div>
 
-<!-- TAB -->
-<div class="tabs">
-    <div class="tab active">SALURAN</div>
-    <div class="tab">OBROLAN</div>
-    <div class="tab">MEDIA STREAM</div>
-    <div class="tab">FILE</div>
+<!-- === AREA DAFTAR SALURAN === -->
+<div class="channel-area" id="channel-list">
+    <!-- Daftar saluran dimuat di sini -->
 </div>
 
-<!-- STATUS -->
+<!-- === STATUS BAR === -->
 <div class="status-bar">
-    <span class="status-online">Koneksi: Online</span>
-    <span><span class="ping">Ping: 299</span> <span class="rx-tx">RX/TX: 0/0 KB</span></span>
+    <span class="online" id="conn-status">Koneksi: Online</span>
+    <span class="ping" id="ping-status">Ping: --</span>
+    <span id="io-status">RX/TX: 0/0 KB</span>
 </div>
 
-<!-- SALURAN BANNER -->
-<div class="channel-banner">
-    <div class="play-icon"><span>&#9654;</span></div>
-    <h2 class="channel-name">CH 1 &bull;</h2>
-</div>
+<!-- === KONTROL BAWAH === -->
+<div class="bottom-bar">
+    
+    <!-- KIRI: Speaker + Volume Master -->
+    <div class="side-left">
+        <button class="icon-btn" onclick="toggleSpeaker()">🔊</button>
+        <span class="control-label" id="vol-label">50%</span>
+        <input type="range" class="seekbar" min="0" max="100" value="50" oninput="updateVol(this.value)">
+    </div>
 
-<!-- DAFTAR PENGGUNA -->
-<div style="padding-bottom: 160px;">
-    <div class="user-item">
-        <div class="user-avatar">BKB</div>
-        <div class="user-info">
-            <div class="user-name">Bersama KitaBisa</div>
-            <div class="user-status">Wehjtjktkt<br>Wehjtjktkt</div>
-        </div>
-        <button class="btn-pesan" onclick="kirimPesan()">PESAN</button>
+    <!-- TENGAH: TOMBOL PTT BULAT -->
+    <div class="ptt-center">
+        <button class="ptt-btn" onmousedown="pttOn()" onmouseup="pttOff()">BICARA</button>
     </div>
-</div>
 
-<!-- KONTROL BAWAH -->
-<div class="bottom-controls">
-    <div class="mic-control">
-        <span class="mic-icon">🎤</span>
-        <input type="range" class="mic-slider" value="50">
-        <button class="btn-bicara" onmousedown="mulaiBicara()" onmouseup="berhentiBicara()">BICARA</button>
-        <input type="range" class="speaker-slider" value="50">
-        <span class="speaker-icon">🔊</span>
+    <!-- KANAN: Mic Gain + VOX -->
+    <div class="side-right">
+        <span class="control-label" id="mic-label">50%</span>
+        <input type="range" class="seekbar" min="0" max="100" value="50" oninput="updateMic(this.value)">
+        <button class="icon-btn" onclick="toggleVox()">🎤</button>
     </div>
-    <div class="action-buttons">
-        <button class="action-btn btn-foto" onclick="pilihFoto()">FOTO</button>
-        <button class="action-btn btn-set" onclick="bukaSet()">SET</button>
-        <button class="action-btn btn-file" onclick="pilihFile()">FILE</button>
-    </div>
+
 </div>
 
 <script>
-// Fungsi yang dipanggil dari HTML ke Android
+// Navigasi App Bar
 function kembali() { if(window.AndroidBridge) AndroidBridge.kembali(); }
-function kirimPesan() { if(window.AndroidBridge) AndroidBridge.bukaPesan(); }
-function mulaiBicara() { if(window.AndroidBridge) AndroidBridge.mulaiBicara(); }
-function berhentiBicara() { if(window.AndroidBridge) AndroidBridge.berhentiBicara(); }
-function pilihFoto() { if(window.AndroidBridge) AndroidBridge.pilihFoto(); }
-function bukaSet() { if(window.AndroidBridge) AndroidBridge.bukaPengaturan(); }
-function pilihFile() { if(window.AndroidBridge) AndroidBridge.pilihFile(); }
+function bukaMenu() { if(window.AndroidBridge) AndroidBridge.bukaMenu(); }
 
-// Fungsi dipanggil dari Android ke HTML
-function perbaruiStatus(ping, rx, tx) {
-    document.querySelector('.ping').textContent = 'Ping: ' + ping;
-    document.querySelector('.rx-tx').textContent = 'RX/TX: ' + rx + '/' + tx + ' KB';
+// Update label
+function updateVol(val) {
+    document.getElementById('vol-label').textContent = val + '%';
+    if(window.AndroidBridge) AndroidBridge.setMasterVolume(parseInt(val));
+}
+function updateMic(val) {
+    document.getElementById('mic-label').textContent = val + '%';
+    if(window.AndroidBridge) AndroidBridge.setMicGain(parseInt(val));
 }
 
-function tambahPengguna(id, nama, status, inisial) {
-    // Bisa ditambahkan logika daftar pengguna dinamis
+// Tombol aksi
+function toggleSpeaker() { if(window.AndroidBridge) AndroidBridge.toggleSpeaker(); }
+function toggleVox() { if(window.AndroidBridge) AndroidBridge.toggleVox(); }
+function pttOn() { if(window.AndroidBridge) AndroidBridge.startTalk(); }
+function pttOff() { if(window.AndroidBridge) AndroidBridge.stopTalk(); }
+
+// Dipanggil dari Android
+function updateStatus(conn, ping, rx, tx) {
+    document.getElementById('conn-status').innerHTML = conn;
+    document.getElementById('ping-status').innerHTML = 'Ping: ' + ping;
+    document.getElementById('io-status').innerHTML = 'RX/TX: ' + rx + '/' + tx + ' KB';
+}
+function setServerTitle(nama) {
+    document.getElementById('server-title').textContent = nama;
 }
 </script>
 
